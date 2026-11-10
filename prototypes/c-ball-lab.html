@@ -15,7 +15,7 @@
 </head>
 <body>
 <canvas id="gl"></canvas>
-<div id="cap">columns: metal · hybrid · anime &nbsp;|&nbsp; rows: nearly still · resting spin · thrown spin &nbsp;|&nbsp; ?bg=bright for a bright room</div>
+<div id="cap">columns: metal · hybrid · anime &nbsp;|&nbsp; rows: nearly still · resting spin · thrown spin &nbsp;|&nbsp; ?look=classic for the first look &nbsp;|&nbsp; ?bg=bright for a bright room</div>
 <script type="module">
 // The ball on its own, large, in every style and at three spin speeds, for judging the look.
 import * as THREE from 'three';
@@ -38,7 +38,7 @@ const R = rows.length > 2 ? 0.048 : 0.06;
 const cells = [];
 rows.forEach((rev, r) => names.forEach((name, c) => {
   const ball = new SteelBall(stage.envTex);
-  ball.u.uMirror.value = 0; ball.setOcclusion(false);
+  ball.u.uMirror.value = 0; ball.setOcclusion(false); ball.setLook(q.get('look') || 'new');
   stage.scene.add(ball.group);
   const y = rows.length > 2 ? (1 - r) * 0.115 : (0.5 - r) * 0.15;
   cells.push({ ball, name, rev, pos: new THREE.Vector3((c - 1) * 0.2, y, -0.5), axis: new THREE.Vector3(0.12, 1, 0.3).normalize() });

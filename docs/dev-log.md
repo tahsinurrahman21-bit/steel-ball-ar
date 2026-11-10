@@ -2,6 +2,24 @@
 
 Newest entry first. Each entry: what changed, what was checked and how, what is still wrong.
 
+## 2026-11-11 — both looks kept
+
+You like the current ball and the previous one, so both stay.
+
+- `L` (or the **Look** button) switches between **new** and **classic**. Classic is the
+  ball shader exactly as committed in the first complete pass (git tag `look-v1`), kept in
+  `src/ball-classic.js`. New is the second pass (tag `look-v2`).
+- Each look works with all three styles; style and look are remembered in the browser.
+- The ball lab takes `?look=classic`.
+- Not carried into classic: the two bug fixes from the second pass that are not part of
+  the ball's surface (glow clipped by the finger stand-ins, coarse reflection image) stay
+  fixed for both looks.
+- The very first build you tried, before the first commit, was never saved and is not
+  recoverable exactly. Classic is the earliest version in git.
+
+Checked: classic renders in the ball lab; the button and the `L` key both switch the
+shader and the choice is saved.
+
 ## 2026-11-11 — ball look, second pass
 
 You asked for the ball look to be refined first.

@@ -12,6 +12,7 @@ export const TUNE = {
   summonTime: 1.5,
   dwell: 0.22,          // seconds the open palm must hold before the ball starts to appear
   style: 'hybrid',      // 'metal' | 'hybrid' | 'anime'
+  look: 'new',          // 'new' | 'classic' (the first version of the ball shader)
 };
 export const STYLES = { metal: { toon: 0, streak: 0, wobble: 0 }, hybrid: { toon: 0.45, streak: 0.8, wobble: 0.02 }, anime: { toon: 1, streak: 1, wobble: 0.045 } };
 

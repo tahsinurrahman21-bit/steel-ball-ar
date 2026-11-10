@@ -38,6 +38,7 @@ missing, download it from
 |---|---|---|
 | `D` | Debug | Landmarks, skeleton, palm axes, gesture and timing readouts |
 | `S` | Style | Cycles hybrid → anime → metal |
+| `L` | Look | Switches between the current ball (new) and the first version (classic) |
 | `C` | Calibrate | Real-object calibration panel |
 | `M` | Mirror | Selfie mirroring on/off |
 | `O` | Finger occlusion | Fingers in front of the ball hide it |
@@ -49,6 +50,11 @@ missing, download it from
 **Styles.** *Metal* is a physical render: deep green reflective metal, real rotational
 blur, no drawn streaks. *Anime* is cel shaded with pale lime, zigzag spin streaks and a
 wobbling outline. *Hybrid* (default) sits between them.
+
+**Looks.** Both versions of the ball are kept. *New* is solid and mirror-like, with short
+comb-ended spin streaks and an ink outline in the anime style. *Classic* is the first
+version: glassier reflections, zigzag-edged streak bands, thinner channels. Each look works
+with all three styles. Your style and look are remembered between visits.
 
 ## Calibration with a real ball (optional)
 

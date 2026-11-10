@@ -34,6 +34,7 @@ async function start() {
   ball = new SteelBall(stage.envTex);
   stage.scene.add(ball.group);
   exp = new Experience(stage, ball, sound);
+  ball.setLook(TUNE.look);
   calib = new Calibration({ source, tracker, stage, panel: $('calib'), out: $('cOut'), preset: $('cPreset'), diam: $('cDiam'), capture: $('cCapture'), reset: $('cReset') });
   calib.load();
 
@@ -91,9 +92,20 @@ async function start() {
 }
 
 const STYLE_ORDER = ['hybrid', 'anime', 'metal'];
+// style and look are remembered between visits
+const PREFS = 'steelball.prefs.v1';
+try { const p = JSON.parse(localStorage.getItem(PREFS) || '{}'); if (STYLE_ORDER.includes(p.style)) TUNE.style = p.style; if (p.look === 'classic' || p.look === 'new') TUNE.look = p.look; } catch { /* ignore */ }
+if (STYLE_ORDER.includes(q.get('style'))) TUNE.style = q.get('style');
+if (q.get('look') === 'classic' || q.get('look') === 'new') TUNE.look = q.get('look');
+const showPrefs = (save = true) => {
+  $('bStyle').firstChild.textContent = `Style: ${TUNE.style}`; $('bLook').firstChild.textContent = `Look: ${TUNE.look}`;
+  if (save) { try { localStorage.setItem(PREFS, JSON.stringify({ style: TUNE.style, look: TUNE.look })); } catch { /* private mode */ } }
+};
+showPrefs(false);
 const actions = {
   d: () => { debug.enabled = !debug.enabled; $('bDebug').setAttribute('aria-pressed', debug.enabled); },
-  s: () => { TUNE.style = STYLE_ORDER[(STYLE_ORDER.indexOf(TUNE.style) + 1) % 3]; $('bStyle').firstChild.textContent = `Style: ${TUNE.style}`; },
+  s: () => { TUNE.style = STYLE_ORDER[(STYLE_ORDER.indexOf(TUNE.style) + 1) % 3]; showPrefs(); },
+  l: () => { TUNE.look = TUNE.look === 'new' ? 'classic' : 'new'; ball?.setLook(TUNE.look); showPrefs(); },
   c: () => { if (!calib) return; calib.toggle(); $('bCalib').setAttribute('aria-pressed', calib.active); },
   m: () => { tracker.mirror = !tracker.mirror; tracker.reset(); $('bMirror').setAttribute('aria-pressed', tracker.mirror); },
   o: () => { if (!exp) return; exp.occlusion = !exp.occlusion; $('bOcc').setAttribute('aria-pressed', exp.occlusion); },
@@ -106,7 +118,7 @@ addEventListener('keydown', (e) => {
   if (e.target?.matches?.('input, select') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   actions[e.key.toLowerCase()]?.();
 });
-for (const [id, key] of [['bDebug', 'd'], ['bStyle', 's'], ['bCalib', 'c'], ['bMirror', 'm'], ['bOcc', 'o'], ['bMute', 'n'], ['bFill', 'f']]) $(id).onclick = actions[key];
+for (const [id, key] of [['bDebug', 'd'], ['bStyle', 's'], ['bLook', 'l'], ['bCalib', 'c'], ['bMirror', 'm'], ['bOcc', 'o'], ['bMute', 'n'], ['bFill', 'f']]) $(id).onclick = actions[key];
 $('bDebug').setAttribute('aria-pressed', debug.enabled);
 $('go').onclick = start;
 if (q.has('sim') || q.has('video')) start();

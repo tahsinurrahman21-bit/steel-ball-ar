@@ -1,6 +1,7 @@
 // The Steel Ball and everything attached to it in 3D: halo, orbit rings, contact shadow,
 // comet tail, star flare, sparks, and depth-only stand-ins for the fingers (occlusion).
 import * as THREE from 'three';
+import { classicFrag } from './ball-classic.js';
 
 const PREMULT = { blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor };
 
@@ -204,9 +205,10 @@ export class SteelBall {
       uMirror: U(1), uLightDir: U(new THREE.Vector3(-0.4, 0.7, 0.6).normalize()), uLightCol: U(new THREE.Vector3(1, 1, 1)), uExposure: U(1),
       uWobbleAxis: U(new THREE.Vector3(0, 1, 0)), uWobble: U(0),
     };
-    this.mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), new THREE.ShaderMaterial({
-      vertexShader: BALL_VERT, fragmentShader: BALL_FRAG, uniforms: this.u, transparent: true,
-    }));
+    // two looks share one set of uniforms; setLook() swaps between them
+    const ballMat = (fragmentShader) => new THREE.ShaderMaterial({ vertexShader: BALL_VERT, fragmentShader, uniforms: this.u, transparent: true });
+    this.looks = { new: ballMat(BALL_FRAG), classic: ballMat(classicFrag(NOISE)) };
+    this.mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), this.looks.new);
     this.mesh.renderOrder = 10;
     this.group.add(this.mesh);
 
@@ -329,6 +331,8 @@ export class SteelBall {
     this.radius = 0.035;
     this._m4 = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._v = new THREE.Vector3(); this._v2 = new THREE.Vector3();
   }
+
+  setLook(name) { this.mesh.material = this.looks[name] ?? this.looks.new; }
 
   setOcclusion(on, showProxy = false) {
     for (const m of this.occluders) { m.visible = on; m.material.colorWrite = showProxy; m.material.color?.set(0xff3df2); m.material.transparent = showProxy; m.material.opacity = 0.45; }
