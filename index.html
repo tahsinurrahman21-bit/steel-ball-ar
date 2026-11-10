@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steel Ball AR</title>
+<style>
+  :root { color-scheme: dark; --lime: #9fd65a; --ink: #0a0d0b; }
+  html, body { margin: 0; height: 100%; background: #050706; color: #e9f5e4; font: 14px/1.4 system-ui, "Segoe UI", sans-serif; overflow: hidden; }
+  #gl, #overlay { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: contain; display: block; }
+  body.fill #gl, body.fill #overlay { object-fit: cover; }
+  #overlay { pointer-events: none; }
+
+  #start { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 40%, #16321a 0%, #050706 70%); z-index: 5; }
+  #start .card { max-width: 440px; padding: 0 24px; text-align: center; }
+  #start h1 { font-size: 30px; letter-spacing: .04em; margin: 0 0 8px; font-weight: 700; }
+  #start p { margin: 0 0 22px; opacity: .78; text-wrap: pretty; }
+  #start ol { text-align: left; margin: 0 auto 24px; padding-left: 22px; opacity: .85; max-width: 330px; }
+  #start li { margin: 4px 0; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  #go { padding: 12px 28px; border-radius: 999px; border: 0; background: var(--lime); color: var(--ink); font-weight: 700; font-size: 16px; }
+  #go:focus-visible, .bar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  #err { margin-top: 18px; color: #ffb4a8; min-height: 1.4em; }
+
+  .bar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-radius: 999px; background: rgba(8, 12, 9, .62); backdrop-filter: blur(8px); z-index: 3; opacity: .35; transition: opacity .2s; flex-wrap: wrap; justify-content: center; width: max-content; max-width: calc(100vw - 24px); box-sizing: border-box; }
+  @media (max-width: 760px) { .bar { border-radius: 18px; } .bar kbd { display: none; } }
+  .bar:hover, .bar:focus-within { opacity: 1; }
+  .bar button { border: 0; background: transparent; padding: 6px 10px; border-radius: 999px; white-space: nowrap; }
+  .bar button:hover { background: rgba(255, 255, 255, .12); }
+  .bar button[aria-pressed="true"] { background: rgba(159, 214, 90, .28); }
+  .bar kbd { font: 11px ui-monospace, Consolas, monospace; opacity: .6; margin-left: 4px; }
+  #hint { position: fixed; left: 0; right: 0; top: 16px; text-align: center; z-index: 3; pointer-events: none; text-shadow: 0 1px 6px #000; font-size: 15px; transition: opacity .4s; }
+
+  #calib { position: fixed; right: 14px; top: 14px; width: 300px; padding: 14px 16px; border-radius: 12px; background: rgba(8, 12, 9, .82); backdrop-filter: blur(8px); z-index: 4; display: none; }
+  #calib h2 { margin: 0 0 6px; font-size: 15px; }
+  #calib p { margin: 0 0 10px; opacity: .8; font-size: 13px; }
+  #calib label { display: block; margin: 8px 0 3px; font-size: 12px; opacity: .75; }
+  #calib select, #calib input[type=number] { width: 100%; box-sizing: border-box; padding: 6px 8px; border-radius: 6px; border: 1px solid #334; background: #10160f; color: inherit; font: inherit; }
+  #calib .row { display: flex; gap: 8px; margin-top: 12px; }
+  #calib .row button { flex: 1; padding: 8px; border-radius: 8px; border: 0; background: #223020; }
+  #calib .row button.primary { background: var(--lime); color: var(--ink); font-weight: 600; }
+  #calib pre { font: 11px/1.45 ui-monospace, Consolas, monospace; margin: 10px 0 0; white-space: pre-wrap; opacity: .85; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "/node_modules/three/build/three.module.min.js",
+  "@mediapipe/tasks-vision": "/node_modules/@mediapipe/tasks-vision/vision_bundle.mjs"
+} }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="overlay"></canvas>
+<div id="hint"></div>
+
+<div id="start">
+  <div class="card">
+    <h1>STEEL BALL</h1>
+    <p>A webcam experience. Your hand is tracked on this computer; nothing is uploaded.</p>
+    <ol>
+      <li>Show an open palm to the camera and hold it.</li>
+      <li>Keep it open while the ball spins.</li>
+      <li>Throw: snap your hand toward the camera.</li>
+    </ol>
+    <button id="go">Start camera</button>
+    <div id="err" role="alert"></div>
+  </div>
+</div>
+
+<div class="bar" id="bar" hidden>
+  <button id="bDebug" aria-pressed="false">Debug<kbd>D</kbd></button>
+  <button id="bStyle">Style: hybrid<kbd>S</kbd></button>
+  <button id="bCalib" aria-pressed="false">Calibrate<kbd>C</kbd></button>
+  <button id="bMirror" aria-pressed="true">Mirror<kbd>M</kbd></button>
+  <button id="bOcc" aria-pressed="true">Finger occlusion<kbd>O</kbd></button>
+  <button id="bMute" aria-pressed="false">Mute<kbd>N</kbd></button>
+  <button id="bFill" aria-pressed="false">Fill<kbd>F</kbd></button>
+</div>
+
+<div id="calib">
+  <h2>Real object calibration</h2>
+  <p>Hold a ball in your open palm, facing the camera. A ring is drawn where the ball is detected.</p>
+  <label for="cPreset">Object</label>
+  <select id="cPreset">
+    <option value="40">Ping-pong ball (40 mm)</option>
+    <option value="42.7">Golf ball (42.7 mm)</option>
+    <option value="57">Pool ball (57 mm)</option>
+    <option value="67">Tennis ball (67 mm)</option>
+    <option value="custom">Other…</option>
+  </select>
+  <label for="cDiam">Diameter (mm)</label>
+  <input id="cDiam" type="number" min="15" max="150" step="0.5" value="40">
+  <div class="row">
+    <button id="cCapture" class="primary">Capture</button>
+    <button id="cReset">Reset</button>
+  </div>
+  <pre id="cOut">Waiting for a hand…</pre>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

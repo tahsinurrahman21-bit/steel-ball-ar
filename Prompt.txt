@@ -1,0 +1,831 @@
+Prompt
+
+# PROJECT: REAL-TIME JOJO'S BIZARRE ADVENTURE — STEEL BALL AR EXPERIENCE
+
+## Your Role
+
+Act as a senior computer vision engineer, creative technologist, real-time graphics programmer, 3D animator, and VFX developer.
+
+I want you to build an interactive, real-time webcam experience inspired by **Gyro Zeppeli's Steel Ball technique from JoJo's Bizarre Adventure: Steel Ball Run**.
+
+This is not supposed to be a conventional webcam filter. I want something that feels like I'm actually performing the Steel Ball technique in front of my camera.
+
+The final result should combine:
+- Real-time hand tracking.
+- Gesture recognition.
+- 2.5D visual effects.
+- A realistically animated spinning metallic ball.
+- Motion-based throwing mechanics.
+- Anime-inspired visual effects.
+- Spatially appropriate sound effects.
+- Camera compositing and color grading.
+
+I will provide you with several reference videos, sound effects, screenshots, and potentially real-world objects or models demonstrating similar spinning movements.
+
+**Your first responsibility is to study these references before attempting to build the application.**
+
+---
+
+# PHASE 1 — REFERENCE ANALYSIS (VERY IMPORTANT)
+
+I will provide:
+
+1. Videos of Gyro Zeppeli using his Steel Balls.
+2. Videos showing the Steel Ball spinning animation.
+3. Examples of Steel Ball sound effects.
+4. Clips demonstrating how the ball moves, accelerates, spins, and gets thrown.
+5. Real-world objects or models performing similar spinning movements.
+6. Additional visual references showing the anime's color grading, motion effects, energy effects, and screen composition.
+
+Analyze every provided reference.
+
+Do not simply watch the videos and produce a generic spinning sphere.
+
+I want you to understand:
+
+### A. Steel Ball appearance
+- Metallic surface characteristics.
+- Reflections and highlights.
+- Surface patterns and engraved details.
+- Rotational direction and speed.
+- How the ball visually communicates rapid spinning.
+- Motion blur and rotational trails.
+- How its appearance changes during acceleration.
+
+### B. Animation
+Identify the different animation stages:
+- Ball gradually materializing.
+- Ball resting on Gyro's palm.
+- Ball spinning while remaining stationary in the hand.
+- Ball accelerating.
+- Ball being thrown.
+- Ball approaching the viewer.
+- Ball disappearing or leaving the camera frame.
+
+### C. Sound
+Study the provided audio references:
+- Initial materialization sound.
+- Subtle continuous spinning sound.
+- Increasing rotational intensity.
+- Acceleration sound.
+- Throwing sound.
+- Projectile movement and impact-like audio.
+
+Use my supplied audio wherever appropriate.
+
+### D. Visual composition
+Understand how the anime communicates the Steel Ball's presence through:
+- Background color changes.
+- Contrast and lighting.
+- Speed lines.
+- Circular energy patterns.
+- Motion trails.
+- Chromatic aberration.
+- Radial distortion.
+- Impact flashes.
+- Subtle environmental color grading.
+
+Create a reference analysis document describing your findings before proceeding.
+
+If a reference is unclear, identify what you cannot determine rather than inventing details.
+
+---
+
+# PHASE 2 — HAND TRACKING PROTOTYPE
+
+Before implementing the Steel Ball, create a simple HTML webcam prototype.
+
+Use a suitable real-time hand-tracking solution such as MediaPipe Hands / MediaPipe Tasks Vision.
+
+The first prototype should:
+
+1. Request webcam permission.
+2. Display the live camera feed.
+3. Detect my hand.
+4. Identify the palm, wrist, fingertips, and finger joints.
+5. Determine whether my palm is facing the camera.
+6. Recognize an open palm.
+7. Track palm position, rotation, and approximate size.
+8. Estimate hand movement speed.
+9. Recognize rapid forward or throwing-like movements.
+
+I want a visual debugging mode.
+
+Show:
+- Hand landmark points.
+- Hand skeleton.
+- Palm center.
+- Palm orientation.
+- Open-palm detection status.
+- Estimated hand velocity.
+- Gesture recognition status.
+
+Make sure tracking works smoothly without excessive lag.
+
+Test different hand positions, lighting conditions, distances, and orientations.
+
+Do not proceed to complex visual effects until basic hand tracking is reliable.
+
+---
+
+# PHASE 3 — STEEL BALL RENDERING
+
+Now implement the actual Steel Ball.
+
+I want the ball to appear as though it is physically resting on my open palm.
+
+### Appearance
+
+The Steel Ball should:
+- Have convincing metallic shading.
+- Rotate continuously.
+- Have visible surface details based on the supplied references.
+- Reflect highlights and environmental lighting.
+- Have realistic rotational motion blur.
+- Maintain consistent proportions.
+- Look three-dimensional even though it is composited into a 2D webcam feed.
+
+Prefer a 3D-rendered sphere using Three.js/WebGL if it provides better results than a 2D sprite.
+
+You may also experiment with:
+- Custom shaders.
+- Procedural textures.
+- Normal maps.
+- Environment reflections.
+- Animated metallic gradients.
+
+Study the reference videos to determine the most appropriate appearance.
+
+Do not use a generic emoji, flat circle, or ordinary rotating PNG.
+
+### Palm positioning
+
+The ball must be positioned convincingly above my palm.
+
+Use hand landmarks to estimate:
+- Palm center.
+- Palm width.
+- Palm orientation.
+- Palm surface direction.
+
+Position and scale the Steel Ball according to the detected palm.
+
+The ball should follow my hand naturally.
+
+When I move my hand, the ball should move with it.
+
+When I rotate my hand, the ball's position and apparent orientation should adapt accordingly.
+
+Avoid the appearance of a floating sticker.
+
+Use appropriate depth ordering, shadows, highlights, and perspective adjustments.
+
+If necessary, experiment with a small amount of 3D perspective projection to create a convincing 2.5D effect.
+
+---
+
+# PHASE 4 — MATERIALIZATION EFFECT
+
+This is one of the most important parts.
+
+When I open my palm in front of the camera, the Steel Ball should gradually materialize.
+
+Expected behavior:
+
+1. Detect an open palm.
+2. Start a subtle visual effect around the palm.
+3. Gradually introduce the Steel Ball.
+4. Increase its opacity and metallic highlights.
+5. Begin its spinning animation.
+6. Introduce the appropriate sound effect.
+7. Complete the materialization.
+
+I want this to feel like Gyro is summoning or preparing his Steel Ball.
+
+### Anime-inspired screen effects
+
+Experiment with:
+- Subtle background color grading.
+- Radial gradients around the hand.
+- Blue, gold, silver, and warm metallic color accents.
+- Brief chromatic aberration.
+- Subtle screen glow.
+- Circular energy waves.
+- Fine particles.
+- Rotational trails.
+
+The effects should be integrated into the webcam image rather than displayed as unrelated UI elements.
+
+IMPORTANT: Do not permanently destroy the original camera image with excessive filters.
+
+Use effects selectively, increasing their intensity during materialization and reducing them when the Steel Ball is stable.
+
+I want the camera view to remain recognizable.
+
+---
+
+# PHASE 5 — SPINNING MECHANICS
+
+Once the ball has materialized, keeping my palm open should maintain the ball on my hand.
+
+Implement:
+- Continuous rotation.
+- Subtle variations in rotational speed.
+- Convincing surface movement.
+- Appropriate spinning sound.
+- Subtle motion trails.
+- Dynamic highlights.
+
+The ball should not look like a static object with an unrelated rotating texture.
+
+The rotation should feel mechanically convincing.
+
+Use the real-world spinning references to understand how the rotation should behave.
+
+---
+
+# PHASE 6 — THROWING MECHANICS
+
+This is the most exciting feature.
+
+When I perform a quick forward throwing motion with my hand, the Steel Ball should launch toward the camera/viewer.
+
+Use hand landmark movement over time to estimate velocity.
+
+Recognize a deliberate throwing gesture rather than triggering on every small movement.
+
+Expected sequence:
+
+1. Detect rapid hand movement.
+2. Calculate movement direction and approximate velocity.
+3. Trigger the throwing animation.
+4. Release the Steel Ball from the palm.
+5. Accelerate it toward the camera.
+6. Increase its apparent size.
+7. Increase rotational speed and motion blur.
+8. Add appropriate sound effects.
+9. Trigger a brief impact-like visual effect or screen distortion as it approaches the viewer.
+10. Remove the ball and reset the experience.
+
+The ball should move independently of the hand after release.
+
+I want a convincing illusion that the Steel Ball is being thrown directly at the camera.
+
+Use perspective scaling, depth simulation, radial blur, motion trails, and appropriate animation timing.
+
+Do not simply make the ball move diagonally across the screen.
+
+The illusion should communicate movement toward the viewer.
+
+After throwing, allow the experience to reset so I can open my palm and summon another ball.
+
+---
+
+# PHASE 7 — SOUND DESIGN
+
+Use the audio samples I provide.
+
+Synchronize sound with the animations.
+
+Required audio states:
+
+| State | Audio |
+|---|---|
+| Palm detected | Subtle activation sound |
+| Ball materializing | Materialization sound |
+| Ball spinning | Continuous rotational sound |
+| Ball accelerating | Increasing spin intensity |
+| Ball thrown | Sharp release/throw sound |
+| Ball approaching camera | Pitch and intensity changes |
+| Impact/disappearance | Short impact or transition sound |
+
+Avoid playing sounds repeatedly every frame.
+
+Implement proper audio state management, volume transitions, and sound cooldowns.
+
+If necessary, use Web Audio API for spatial positioning, filtering, pitch changes, and volume modulation.
+
+---
+
+# PHASE 8 — DEVELOPMENT AND TESTING
+
+I do NOT want you to immediately build everything in one attempt.
+
+Work through incremental prototypes.
+
+### Prototype A: Hand tracking
+- Webcam access.
+- Palm detection.
+- Open-hand recognition.
+- Landmark visualization.
+
+### Prototype B: Ball positioning
+- Render a basic Steel Ball.
+- Attach it to the palm.
+- Test tracking and positioning.
+
+### Prototype C: Ball animation
+- Implement spinning.
+- Add metallic materials.
+- Test rotational appearance.
+
+### Prototype D: Materialization
+- Add particle effects.
+- Add gradients and color grading.
+- Synchronize sound.
+
+### Prototype E: Throwing
+- Detect rapid hand movement.
+- Release the ball.
+- Simulate depth and acceleration.
+
+### Prototype F: Complete experience
+- Integrate everything.
+- Optimize performance.
+- Test the entire interaction.
+
+At every stage, run the application and evaluate the actual visual output.
+
+If something looks wrong, fix it before moving forward.
+
+Do not claim something works without testing it.
+
+---
+
+# TECHNICAL REQUIREMENTS
+
+Start with an HTML-based prototype that I can run locally.
+
+Preferred technologies:
+- HTML5
+- CSS3
+- JavaScript / TypeScript
+- MediaPipe Hands or an equivalent hand-tracking solution
+- Three.js
+- WebGL
+- Canvas API
+- Web Audio API
+
+Choose the best combination rather than forcing every technology into the project.
+
+Requirements:
+- Real-time webcam processing.
+- Smooth animation.
+- Low latency.
+- Reasonable CPU/GPU usage.
+- Responsive rendering.
+- Proper camera permission handling.
+- No unnecessary external dependencies.
+- Local asset management for my reference videos, models, textures, and sound files.
+
+Aim for approximately 30–60 FPS where hardware permits.
+
+If 60 FPS is unrealistic on my hardware, prioritize stable tracking and smooth animation.
+
+Create a clean project structure.
+
+Include instructions for installing dependencies and launching the application locally.
+
+---
+
+# VISUAL QUALITY EXPECTATIONS
+
+My main priority is the illusion.
+
+I would rather have:
+- One convincing Steel Ball.
+- Accurate palm positioning.
+- Smooth spinning.
+- Beautiful materialization.
+- Convincing throwing mechanics.
+
+Than:
+- Ten different effects.
+- Complicated UI.
+- Excessive particles.
+- A visually busy but unconvincing result.
+
+The Steel Ball should be the main attraction.
+
+I want the final experience to feel like a small interactive scene from Steel Ball Run, with me performing the technique through my webcam.
+
+Use the provided references as visual guidance, but create an original implementation rather than directly reproducing entire copyrighted animation sequences.
+
+---
+
+# FINAL INSTRUCTIONS
+
+Before coding, inspect all the reference materials I provide.
+
+Do not skip the reference analysis.
+
+Do not immediately settle for a basic 2D rotating circle.
+
+If you need to test different approaches, create separate experimental prototypes.
+
+If the ball positioning looks unnatural, experiment with different palm anchors, perspective calculations, and 3D transformations.
+
+If the materialization looks weak, experiment with different gradients, lighting, particles, and compositing techniques.
+
+If throwing detection is unreliable, calibrate the gesture recognition before implementing more effects.
+
+**Think like a VFX artist creating a real-time AR illusion, not just a programmer attaching an image to a hand.**
+
+The end goal:
+
+I open my palm in front of my webcam.
+
+A Steel Ball gradually materializes above it.
+
+It begins spinning with the appropriate sound.
+
+I keep my palm open, and it continues spinning naturally.
+
+I quickly perform a throwing motion.
+
+The Steel Ball launches directly toward the camera with convincing depth, acceleration, spinning, motion blur, and sound effects.
+
+That is the experience I want you to build.
+
+# ADDITIONAL PHASE — REAL SPHERICAL OBJECT REFERENCE & PHYSICAL CALIBRATION
+
+I am also willing to physically hold an actual spherical object in my hand while using the webcam.
+
+This could be a ping-pong ball, tennis ball, metal sphere, small toy ball, or another approximately spherical object.
+
+I want you to take advantage of this opportunity.
+
+### 1. Real Object Tracking
+
+If I hold a spherical object in my open palm, use the webcam to:
+
+- Detect and track my hand.
+- Identify the actual spherical object's position.
+- Estimate its center, radius, and distance from the camera.
+- Observe how it sits relative to my palm.
+- Understand how the object moves when I move my hand.
+- Observe how the object rotates, if its surface has identifiable markings.
+- Analyze how the object becomes partially occluded by my fingers.
+
+If necessary, experiment with object detection, segmentation, optical flow, and hand landmarks.
+
+Do not assume the object is always perfectly visible.
+
+### 2. Physical-to-Virtual Calibration
+
+Use the real object as a temporary calibration reference.
+
+Compare its:
+- Screen position.
+- Apparent diameter.
+- Distance from the camera.
+- Position relative to the palm.
+- Perspective changes.
+- Movement during hand rotation.
+
+Use this information to improve the positioning and scaling of the virtual Steel Ball.
+
+The real object should help establish how a sphere of a particular size would naturally appear when held in my hand.
+
+### 3. Occlusion and Depth
+
+Pay special attention to how my fingers interact visually with the physical object.
+
+I want the virtual Steel Ball to eventually behave similarly.
+
+For example:
+- Fingers should appear in front of the ball when they physically overlap it.
+- The ball should not look pasted over my entire hand.
+- The ball should maintain believable depth.
+- Shadows and highlights should help establish its position above the palm.
+
+Experiment with hand segmentation or depth estimation if necessary.
+
+### 4. Calibration Mode
+
+Create an optional REAL OBJECT CALIBRATION mode.
+
+In this mode:
+1. Ask me to hold a spherical object in my open palm.
+2. Detect the hand and sphere.
+3. Allow me to adjust the sphere's approximate physical diameter if needed.
+4. Estimate the appropriate virtual ball position and scale.
+5. Save the calibration parameters for subsequent sessions.
+
+The calibration should be optional. The final application must still work without a physical reference object.
+
+### 5. Compare the Results
+
+Test the following configurations:
+
+A. Empty open palm with virtual Steel Ball.
+
+B. Real spherical object held in palm.
+
+C. Virtual Steel Ball calibrated using the real spherical object.
+
+Compare their positioning and visual alignment.
+
+Use the real object as a calibration aid, not as a permanent requirement.
+
+The final experience must render the virtual Steel Ball independently, without requiring me to keep holding the physical object.
+
+A few things I'd recommend before giving Claude Code your references
+
+
+
+
+
+
+
+
+
+1. Steel Ball appearance
+
+Give it close-up footage of the ball rotating, especially shots where its engravings and metallic reflections are visible.
+
+
+
+
+
+
+
+
+
+
+
+
+2. Palm positioning
+
+Give it footage showing the ball resting on Gyro's palm. This is essential for getting the scale, positioning, and angle right.
+
+
+
+
+
+
+
+
+
+
+
+
+3. Anime visual effects
+
+Provide examples of the color transitions, speed lines, energy effects, and impact flashes.
+
+
+
+
+
+
+
+
+
+
+
+
+4. Real-world spinning objects
+
+These will help Claude understand actual rotational motion instead of relying entirely on anime animation.
+
+
+
+One particularly important suggestion
+Tell Claude to implement two rendering approaches and compare them:
+- Approach A: A properly textured 3D Steel Ball rendered using Three.js.
+- Approach B: A carefully extracted and animated 2D Steel Ball sequence with transparency, composited over the webcam.
+A 3D ball will give you better perspective when throwing it toward the camera. However, a carefully extracted anime-style 2D animation might look much closer to the actual Steel Ball Run aesthetic.
+
+Combining both could be even better: 2D-style visual effects surrounding a 3D-rendered ball.
+
+# CONTINUOUS REFINEMENT & ADDITIONAL REFERENCE MATERIAL
+
+The first completed version is NOT necessarily the final version.
+
+I may provide additional materials at any point during development, including:
+
+- More Gyro Zeppeli Steel Ball footage.
+- Additional spinning animation examples.
+- More sound effects.
+- Better-quality or different-angle reference videos.
+- Additional real-world spherical objects.
+- More webcam recordings of my hand performing different gestures.
+- Camera tracking demonstrations.
+- Examples of how I want the ball positioned, animated, or composited.
+- Screenshots showing what looks wrong in the current implementation.
+
+**You must be prepared to incorporate these additional references throughout development.**
+
+### Iterative Improvement Workflow
+
+If I am dissatisfied with any part of the output:
+
+1. Ask me what looks incorrect or what I want improved, if it isn't already clear.
+2. Accept additional video, audio, image, and camera-tracking references.
+3. Analyze the new references.
+4. Compare them against the current implementation.
+5. Identify the specific visual, tracking, animation, or audio shortcomings.
+6. Experiment with alternative implementations.
+7. Modify the existing project rather than unnecessarily rebuilding everything.
+8. Run the application again and evaluate the updated result.
+
+### Areas That May Need Repeated Refinement
+
+- Steel Ball appearance and texture.
+- Realistic rotation.
+- Palm positioning and alignment.
+- Hand landmark accuracy.
+- Finger occlusion.
+- Ball materialization.
+- Background color grading.
+- Anime-inspired visual effects.
+- Sound synchronization.
+- Throwing gesture detection.
+- Projectile perspective and depth.
+- Motion blur and rotational trails.
+- Overall performance and latency.
+
+### Maintain a Development Log
+
+Maintain a simple development log documenting:
+
+- What currently works.
+- What looks unnatural.
+- What still needs improvement.
+- What references have been added.
+- What changes were made.
+- What experiments were successful or unsuccessful.
+- What should be tested next.
+
+Keep previous working versions or use Git checkpoints so that experimental changes can be reverted.
+
+### Important Rule
+
+Do not defend an unsatisfactory implementation simply because it technically works.
+
+If the Steel Ball looks like a sticker, floats unnaturally, spins incorrectly, has poor alignment, or the throwing animation lacks depth, acknowledge the problem and improve it.
+
+I may continue supplying references until the result is visually convincing.
+
+**Treat this as an iterative VFX and computer-vision project. The objective is not merely to finish coding; it is to achieve the visual illusion I originally described.**
+
+the downloaded videos are on"G:\Still ball vibe code\videos\best"
+
+steel ball free model -> https://sketchfab.com/3d-models/jojos-bizarre-adventure-gyros-steel-ball-4e08d2fac7a44f24adaedd3f60442dd3 (its gray ,hpe its green colored )https://sketchfab.com/3d-models/gyro-zeppelis-steel-ball-jjba-steel-ball-run-dfb1780502da492faa383d5126df495f 
+https://sketchfab.com/models/379d3d6ffa4f40758b677b3045027cf1/embed
+https://makerworld.com/en/models/509253-steel-ball#profileId-773313https://cults3d.com/en/3d-model/fashion/ball-gyro-zeppeli-steel-ball-run-jojo-cosplay?srsltid=AYCX9vLe6SpyGvs-K_R6Fl5TV9r1XIM120fkKVYKReh3ZOxVQwSsRtTb
+
+# PHASE 9 — PROVIDED STEEL BALL 3D MODELS & ASSET INTEGRATION
+
+I am providing several existing 3D Steel Ball models that I want you to investigate and potentially use in the project.
+
+These models are important because they may provide much more accurate geometry and detailing than creating a generic sphere procedurally.
+
+## Provided 3D Model References
+
+### 1. Sketchfab — Gyro's Steel Ball
+https://sketchfab.com/3d-models/jojos-bizarre-adventure-gyros-steel-ball-4e08d2fac7a44f24adaedd3f60442dd3
+
+This model appears gray.
+
+IMPORTANT: I would prefer a green-colored Steel Ball if the geometry supports it.
+
+Investigate whether you can:
+- Download the model in an available format.
+- Extract or use its geometry.
+- Modify its material colors.
+- Apply metallic green shading.
+- Preserve its original surface details.
+- Add appropriate metallic reflections.
+
+Do not discard this model just because its default color is gray.
+
+### 2. Sketchfab — Gyro Zeppeli's Steel Ball
+https://sketchfab.com/3d-models/gyro-zeppelis-steel-ball-jjba-steel-ball-run-dfb1780502da492faa383d5126df495f
+
+Inspect its geometry, surface details, textures, and overall resemblance to the anime Steel Ball.
+
+Compare it with the first model.
+
+### 3. Sketchfab — Additional Steel Ball Model
+https://sketchfab.com/models/379d3d6ffa4f40758b677b3045027cf1/embed
+
+Inspect this embedded model as another possible reference or asset.
+
+Determine whether the actual model files are accessible and usable locally.
+
+### 4. MakerWorld — Steel Ball
+https://makerworld.com/en/models/509253-steel-ball#profileId-773313
+
+Investigate this model as an additional geometric reference.
+
+It may be useful for understanding the physical shape, engraved patterns, proportions, and surface construction.
+
+### 5. Cults3D — Gyro Zeppeli Steel Ball
+https://cults3d.com/en/3d-model/fashion/ball-gyro-zeppeli-steel-ball-run-jojo-cosplay
+
+Investigate this additional model and compare its appearance and geometry with the Sketchfab references.
+
+---
+
+## ASSET EVALUATION
+
+Do not automatically use the first model you find.
+
+Evaluate all accessible models based on:
+
+1. Similarity to Gyro's Steel Ball in Steel Ball Run.
+2. Geometry quality.
+3. Surface engravings and details.
+4. Texture quality.
+5. Material quality.
+6. Suitability for real-time rendering.
+7. File format compatibility.
+8. Performance and polygon count.
+
+Create a comparison of the available assets.
+
+Choose the best candidate as the primary virtual Steel Ball.
+
+If different models have different advantages, consider combining their geometry, textures, or visual characteristics where technically and legally permissible.
+
+## COLOR AND MATERIAL CUSTOMIZATION
+
+My preferred appearance is a metallic green Steel Ball, inspired by the Steel Ball Run aesthetic.
+
+Experiment with:
+- Deep metallic green.
+- Emerald green highlights.
+- Dark green shadows.
+- Silver metallic reflections.
+- Subtle gold accents if appropriate.
+- Dynamic lighting and environmental reflections.
+
+Do not simply apply a flat green color overlay.
+
+Preserve the geometry and engraved details.
+
+If the original model has a different color, modify its materials or create suitable replacement textures.
+
+Also experiment with different lighting environments to achieve a convincing metallic appearance.
+
+## TECHNICAL INTEGRATION
+
+Prefer formats suitable for Three.js, such as:
+- GLB / glTF.
+- OBJ.
+- FBX.
+
+If the model is only available as STL or another format, investigate conversion.
+
+Optimize the asset for real-time rendering while preserving important visual details.
+
+Use:
+- Proper normals.
+- Appropriate roughness.
+- Metallic materials.
+- Environment maps.
+- Normal maps where available.
+- Efficient texture resolution.
+
+Keep the original downloaded assets separate from modified working copies.
+
+## ANIMATION COMPATIBILITY
+
+The selected model must work with the previously described mechanics:
+
+- Continuous spinning on my palm.
+- Smooth rotational acceleration.
+- Dynamic metallic reflections.
+- Perspective scaling.
+- Throwing toward the camera.
+- Motion blur.
+- Rotational trails.
+- Materialization and disappearance effects.
+
+Ensure the model's pivot point is correctly centered so that it rotates naturally.
+
+If its geometry has an unusual orientation, correct the orientation before implementing animation.
+
+## IMPORTANT — ASSET ACCESS AND LICENSING
+
+Some websites may restrict downloads, require accounts, or provide models under specific licensing conditions.
+
+Do not bypass download restrictions or assume that an embedded viewer grants permission to download the underlying model.
+
+Check the available download options and applicable licenses.
+
+If a model cannot be downloaded, use its publicly accessible appearance as a visual reference where permitted and move on to the next candidate.
+
+Do not pretend an asset has been downloaded or integrated if it has not.
+
+If necessary, ask me to manually download and provide the model files.
+
+## FINAL OBJECTIVE
+
+I want the final Steel Ball to look recognizably like Gyro Zeppeli's actual Steel Ball, not an ordinary metallic sphere.
+
+Use the provided models as the starting point, improve their materials and rendering, and integrate the selected model into the real-time webcam experience.
+
+Visual accuracy takes priority over simply using an available model.
