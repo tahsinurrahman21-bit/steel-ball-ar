@@ -51,7 +51,7 @@ vec3 rotAxis(vec3 v, vec3 k, float a){ float c = cos(a), s = sin(a); return v*c 
 // Engraving: a hexagonal groove round each pole and a slot from each hexagon corner toward
 // the equator, ending in a rounded tip. Returns 1 on the groove floor, 0 on the surface.
 float groove(vec3 d, float soft){
-  const float R = 0.56, T2 = 1.30, W = 0.062, SEG = PI/3.;
+  const float R = 0.56, T2 = 1.30, W = 0.072, SEG = PI/3.;
   float th = acos(clamp(abs(d.y), 0., 1.));
   float ph = atan(d.z, d.x) + (d.y < 0. ? PI/6. : 0.);
   float a = mod(ph, SEG) - SEG*0.5;                  // 0 at an edge midpoint, +-30deg at corners
@@ -62,53 +62,73 @@ float groove(vec3 d, float soft){
   return 1. - smoothstep(W*0.5 - soft, W + soft, min(dHex, dSlot));
 }
 
+// Engraving depth at a surface direction, averaged along the arc it sweeps in one exposure
+// (rotational motion blur).
+float heightAt(vec3 dir){
+  if (uBlurArc <= 0.02) return groove(uRotInv * dir, 0.);
+  float taps = clamp(ceil(uBlurArc/0.035), 2., 28.);
+  float soft = uBlurArc/(taps - 1.)*0.75;                    // widen each tap's edge to its spacing so taps never comb
+  float h = 0.;
+  for (int i = 0; i < 28; i++) {
+    if (float(i) >= taps) break;
+    h += groove(uRotInv * rotAxis(dir, uAxis, (float(i)/(taps - 1.) - 0.5)*uBlurArc), soft);
+  }
+  return h/taps;
+}
+
 void main(){
   vec3 N = normalize(vN);
   vec3 V = normalize(-vPos);
+  float H = heightAt(N);
 
-  // --- rotational motion blur: average the engraving along the arc it sweeps in one exposure
-  float H = 0.;
-  if (uBlurArc > 0.02) {
-    float n = clamp(ceil(uBlurArc/0.035), 2., 28.);
-    float soft = uBlurArc/(n - 1.)*0.75;                      // widen each tap's edge to its spacing so taps never comb
-    for (int i = 0; i < 28; i++) {
-      if (float(i) >= n) break;
-      H += groove(uRotInv * rotAxis(N, uAxis, (float(i)/(n - 1.) - 0.5)*uBlurArc), soft);
-    }
-    H /= n;
-  } else H = groove(uRotInv * N, 0.);
-
-  // --- bump from the blurred height (screen-space derivatives)
-  vec3 dpdx = dFdx(vPos), dpdy = dFdy(vPos);
-  vec3 r1 = cross(dpdy, N), r2 = cross(N, dpdx);
-  float det = dot(dpdx, r1);
-  vec3 grad = sign(det)*(dFdx(H)*r1 + dFdy(H)*r2);
-  vec3 Nb = normalize(abs(det)*N + grad*uRadius*0.055*(1. - 0.6*smoothstep(0.4, 1.6, uBlurArc)));
+  // --- bump: the channel walls lean toward the channel
+  vec3 Nb;
+  float bumpK = 1. - 0.6*smoothstep(0.4, 1.6, uBlurArc);
+  if (uBlurArc < 0.9) {
+    // finite differences on the sphere: smooth, per-pixel wall normals
+    vec3 t1 = normalize(cross(N, abs(N.y) < 0.95 ? vec3(0, 1, 0) : vec3(1, 0, 0))), t2 = cross(N, t1);
+    const float e = 0.014;
+    vec3 g = ((heightAt(normalize(N + t1*e)) - H)*t1 + (heightAt(normalize(N + t2*e)) - H)*t2)/e;
+    Nb = normalize(N + g*0.03*bumpK);
+  } else {
+    // very fast spin: the engraving is a blur, screen-space derivatives are enough
+    vec3 dpdx = dFdx(vPos), dpdy = dFdy(vPos);
+    vec3 r1 = cross(dpdy, N), r2 = cross(N, dpdx);
+    float det = dot(dpdx, r1);
+    vec3 grad = sign(det)*(dFdx(H)*r1 + dFdy(H)*r2);
+    Nb = normalize(abs(det)*N + grad*uRadius*0.055*bumpK);
+  }
   float NoV = max(dot(Nb, V), 0.);
 
-  // --- anime streaks: saw-toothed streaks round the spin axis, redrawn every step.
-  // They repaint the surface itself; lighting and reflections are applied on top of them.
+  // --- anime streaks: horizontal streaks round the spin axis with pointed, comb-like ends,
+  // redrawn every step. They repaint the surface itself; lighting and reflections go on top.
   // (longitude is measured from the side facing the viewer, so its wrap-around seam is hidden)
   vec3 e1 = V - uAxis*dot(V, uAxis);
   e1 = dot(e1, e1) > 1e-4 ? normalize(e1) : normalize(cross(uAxis, vec3(1, 0, 0)));
   vec3 e2 = cross(uAxis, e1);
   float lat = dot(N, uAxis), lon = atan(dot(N, e2), dot(N, e1));
-  float ph = hash1(uStep)*6.283;
-  float tri1 = abs(fract(lon*2.9 + ph) - 0.5)*2. - 0.5, tri2 = abs(fract(lon*6.7 - ph*1.7) - 0.5)*2. - 0.5;
-  float amp = 0.04 + 0.05*vnoise(vec2(lat*4. + uStep, 3.));
-  float l2 = lat + tri1*amp + tri2*amp*0.45;                 // zigzag edges
-  float nA = vnoise(vec2(l2*5.0 + uStep*3.7, lon*1.5 + uStep*1.3))*0.7 + vnoise(vec2(l2*11. - uStep*2.1, lon*2.6 + 5.))*0.3;
-  float nB = vnoise(vec2(l2*27. + uStep*9.1, lon*3.6 - uStep*2.3));
+  // each thin row of latitude is pushed sideways by its own amount, tapering to nothing at the
+  // row's edges; wherever a streak ends, that turns the end into a row of horizontal teeth
+  float rows = lat*17. + hash1(uStep + 3.)*5.;
+  float row = floor(rows), tooth = 1. - abs(fract(rows) - 0.5)*2.;
+  float push = (hash1(row*1.37 + uStep*5.) - 0.5)*tooth;
+  float lonW = lon + push*0.75, lonD = lon + push*1.1;
+  float nA = vnoise(vec2(lat*4.2 + uStep*3.7, lonW*1.35 + uStep*1.3))*0.72 + vnoise(vec2(lat*9. - uStep*2.1, lonW*2.4 + 5.))*0.28;
+  float nB = vnoise(vec2(lat*21. + uStep*9.1, lonD*3.2 - uStep*2.3));
   float polar = 1. - smoothstep(0.72, 0.97, abs(lat));       // streaks thin out toward the poles of the spin
-  float white = smoothstep(0.565, 0.595, nA)*polar*uStreak;   // pale streaks of finite length
-  float dark = smoothstep(0.77, 0.79, nB)*polar*uStreak;      // short dark dashes
+  float white = smoothstep(0.555, 0.575, nA)*polar*uStreak;   // pale streaks of finite length
+  float dark = smoothstep(0.80, 0.815, nB)*polar*uStreak;     // sparse, short dark dashes
 
-  // --- material: lime-green metal, darker in the channels
-  // deep emerald when rendered as metal, paler lime (the anime's colour) when cel shaded
-  vec3 metalCol = mix(vec3(0.13, 0.56, 0.05), vec3(0.40, 0.72, 0.13), uToon);
-  vec3 base = mix(metalCol, vec3(0.02, 0.13, 0.02), H*(0.92 - 0.5*uStreak));
+  // --- material. Metal: deep emerald, dark channels. Cel: the anime's paler lime, with a
+  // mid-green channel floor between inked walls.
+  float wall = H*(1. - H)*4.;
+  float gk = 1. - 0.5*uStreak;                                // the engraving fades under the streaks
+  vec3 metalCol = mix(vec3(0.13, 0.56, 0.05), vec3(0.42, 0.74, 0.14), uToon);
+  vec3 floorCol = mix(vec3(0.02, 0.13, 0.02), vec3(0.10, 0.36, 0.06), uToon);
+  vec3 base = mix(metalCol, floorCol, H*0.92*gk);
+  base = mix(base, vec3(0.015, 0.09, 0.02), wall*uToon*0.85*gk);
   base = mix(base, vec3(0.03, 0.17, 0.03), dark*0.85);
-  base = mix(base, mix(vec3(0.45, 0.82, 0.30), vec3(0.76, 0.92, 0.58), uToon), white*0.8);
+  base = mix(base, mix(vec3(0.45, 0.82, 0.30), vec3(0.80, 0.94, 0.62), uToon), white*0.85);
   vec3 L = normalize(uLightDir);
   float nl = dot(Nb, L)*0.5 + 0.5;
   float tone = mix(nl*nl, floor(nl*3. + 0.4)/3., uToon);
@@ -116,25 +136,40 @@ void main(){
   vec3 body = base*(0.30 + 1.0*tone)*under;
 
   vec3 R = reflect(-V, Nb);
-  vec2 euv = uScreen + R.xy*0.34;
+  // Reflection lookup into the blurred camera frame. The frame is flipped left-right and
+  // addressed from its centre, not from the ball's own position: sampling what lies directly
+  // behind the ball would make it look like glass instead of a mirror.
+  vec2 euv = vec2(0.5 - R.x*0.42, 0.5 + R.y*0.42);
   vec3 env = pow(texture2D(uEnv, vec2(mix(euv.x, 1.-euv.x, uMirror), euv.y)).rgb, vec3(2.2));
+  env = mix(env, env*env*2.2, 0.45);                              // more contrast: reads as polished metal
   float fres = pow(1. - NoV, 5.);
   vec3 F0 = min(base*1.25, vec3(0.95));
   vec3 F = F0 + (1. - F0)*fres;
   vec3 Hh = normalize(L + V);
   float nh = max(dot(Nb, Hh), 0.);
   float tight = pow(nh, 120.), broad = pow(nh, 18.);
-  tight = mix(tight, smoothstep(0.35, 0.45, tight), uToon);       // hard-edged highlight patch when cel shaded
-  vec3 spec = env*F*mix(1.15, 0.6, uToon)*under + uLightCol*(tight*3.0 + broad*mix(1.1, 0.5, uToon))*mix(F, vec3(1.), 0.55);
+  vec3 spec = env*F*mix(1.15, 0.3, uToon)*under;
+  spec += uLightCol*(tight*3.0 + broad*1.1)*mix(F, vec3(1.), 0.55)*(1. - uToon);
+  // spinning metal: micro-detail smears into rings round the axis, which stretches the highlight
+  // into a streak from pole to pole (seen on the real spinning props)
+  vec3 Tg = cross(uAxis, N); Tg /= max(length(Tg), 1e-4);
+  float tH = dot(Tg, Hh);
+  float aniso = pow(max(1. - tH*tH, 0.), 90.)*pow(nh, 3.)*smoothstep(0.25, 1.2, uBlurArc)*(1. - uToon);
+  spec += uLightCol*aniso*0.9*mix(F, vec3(1.), 0.4);
   // a second, dimmer highlight low on the opposite side keeps the form readable
   vec3 L2 = normalize(vec3(-L.x, -0.6, 0.5));
-  spec += F*pow(max(dot(Nb, normalize(L2 + V)), 0.), 40.)*0.35;
+  spec += F*pow(max(dot(Nb, normalize(L2 + V)), 0.), 40.)*0.35*(1. - 0.7*uToon);
 
   vec3 col = (body*0.72 + spec*0.62)*uExposure;
-  col += fres*vec3(0.35, 0.8, 0.3)*0.22*uExposure;
+  col += fres*vec3(0.35, 0.8, 0.3)*0.22*uExposure*(1. - uToon);
+  // cel: one large hard-edged highlight patch with a hot core, and an ink outline
+  col = mix(col, vec3(0.86, 0.97, 0.72)*uExposure, smoothstep(0.925, 0.94, nh)*uToon*0.75);
+  col = mix(col, vec3(1.08)*uExposure, smoothstep(0.985, 0.99, nh)*uToon*0.9);
+  float outline = (1. - smoothstep(0.16, 0.30, max(dot(N, V), 0.)))*smoothstep(0.15, 0.75, uToon);
+  col = mix(col, vec3(0.012, 0.07, 0.02), outline*0.9);
 
-  // --- gold energy while accelerating
-  col += uGlow*vec3(1.0, 0.78, 0.22)*(0.18 + fres*1.1);
+  // --- gold energy while accelerating (a rim, so the form stays readable)
+  col += uGlow*vec3(1.0, 0.78, 0.22)*(0.05 + fres*0.9);
 
   // --- materialisation: the surface condenses out of noise behind a bright edge
   float nz = vnoise(N.xy*3.1 + N.z*2.3 + 11.);
@@ -184,7 +219,7 @@ export class SteelBall {
         float g = exp(-r*r*6.5)*0.5 + exp(-r*r*2.2)*0.12;
         vec3 c = mix(vec3(0.45, 1.0, 0.35), vec3(1.0, 0.8, 0.25), uGold);
         gl_FragColor = vec4(c*g*uAmt*(1. - smoothstep(0.85, 1., r)), 0.);
-      }`, this.haloU));
+      }`, this.haloU, { depthTest: false }));
     this.halo.renderOrder = 5;
     this.group.add(this.halo);
 

@@ -7,6 +7,8 @@
 import * as THREE from 'three';
 import { CONFIG } from './tracking.js';
 
+const EW = 160, EH = 90;        // size of the blurred frame copy used for reflections and light estimation
+
 const FS_VERT = /* glsl */`varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`;
 
 const BG_FRAG = /* glsl */`
@@ -100,7 +102,7 @@ export class Stage {
     this.videoTex.minFilter = this.videoTex.magFilter = THREE.LinearFilter; this.videoTex.generateMipmaps = false;
 
     // small blurred copy of the frame: environment for the ball's reflections + light estimate
-    this.envCanvas = document.createElement('canvas'); this.envCanvas.width = 64; this.envCanvas.height = 36;
+    this.envCanvas = document.createElement('canvas'); this.envCanvas.width = EW; this.envCanvas.height = EH;
     this.envCtx = this.envCanvas.getContext('2d', { willReadFrequently: true });
     this.envTex = new THREE.CanvasTexture(this.envCanvas);
     this.envTex.minFilter = this.envTex.magFilter = THREE.LinearFilter; this.envTex.generateMipmaps = false;
@@ -146,21 +148,22 @@ export class Stage {
     const fc = this.frameCanvas;
     if (fc.width !== this.w || fc.height !== this.h) { this.videoTex.dispose(); this.setSize(fc.width, fc.height); }
     this.videoTex.needsUpdate = true;
-    this.envCtx.drawImage(fc, 0, 0, 64, 36);
+    this.envCtx.filter = 'blur(2px)';                           // soft reflections; ignored where unsupported
+    this.envCtx.drawImage(fc, 0, 0, EW, EH);
     this.envTex.needsUpdate = true;
     if (this._lightN++ % 8 === 0) this._estimateLight(mirror);
   }
 
   // Rough key-light estimate from the frame: where the brightness sits, how bright, what colour.
   _estimateLight(mirror) {
-    const d = this.envCtx.getImageData(0, 0, 64, 36).data;
-    let sum = 0, sx = 0, sy = 0, r = 0, g = 0, b = 0, w = 0;
-    for (let y = 0; y < 36; y++) for (let x = 0; x < 64; x++) {
-      const i = (y * 64 + x) * 4, l = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) / 255;
-      sum += l; const ww = l * l * l; w += ww; sx += ww * (x / 63 - 0.5); sy += ww * (0.5 - y / 35);
+    const d = this.envCtx.getImageData(0, 0, EW, EH).data;
+    let sum = 0, sx = 0, sy = 0, r = 0, g = 0, b = 0, w = 0, n = 0;
+    for (let y = 0; y < EH; y += 2) for (let x = 0; x < EW; x += 2) {
+      const i = (y * EW + x) * 4, l = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) / 255;
+      sum += l; const ww = l * l * l; w += ww; n++; sx += ww * (x / (EW - 1) - 0.5); sy += ww * (0.5 - y / (EH - 1));
       r += ww * d[i]; g += ww * d[i + 1]; b += ww * d[i + 2];
     }
-    const mean = sum / (64 * 36);
+    const mean = sum / n;
     let lx = (sx / (w || 1)) * 3.2, ly = (sy / (w || 1)) * 3.2 + 0.45;
     if (mirror) lx = -lx;
     const target = new THREE.Vector3(lx, ly, 0.75).normalize();

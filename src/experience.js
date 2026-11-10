@@ -13,7 +13,7 @@ export const TUNE = {
   dwell: 0.22,          // seconds the open palm must hold before the ball starts to appear
   style: 'hybrid',      // 'metal' | 'hybrid' | 'anime'
 };
-const STYLES = { metal: { toon: 0, streak: 0, wobble: 0 }, hybrid: { toon: 0.45, streak: 0.8, wobble: 0.02 }, anime: { toon: 1, streak: 1, wobble: 0.045 } };
+export const STYLES = { metal: { toon: 0, streak: 0, wobble: 0 }, hybrid: { toon: 0.45, streak: 0.8, wobble: 0.02 }, anime: { toon: 1, streak: 1, wobble: 0.045 } };
 
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype C — ball lab</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0e11; color: #dfe; font: 13px system-ui, sans-serif; overflow: hidden; }
+  #gl { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: contain; }
+  #cap { position: fixed; left: 0; right: 0; bottom: 8px; text-align: center; opacity: .75; text-shadow: 0 1px 4px #000; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "/node_modules/three/build/three.module.min.js", "@mediapipe/tasks-vision": "/node_modules/@mediapipe/tasks-vision/vision_bundle.mjs" } }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="cap">columns: metal · hybrid · anime &nbsp;|&nbsp; rows: nearly still · resting spin · thrown spin &nbsp;|&nbsp; ?bg=bright for a bright room</div>
+<script type="module">
+// The ball on its own, large, in every style and at three spin speeds, for judging the look.
+import * as THREE from 'three';
+import { Stage } from '/src/stage.js';
+import { SteelBall } from '/src/ball.js';
+import { STYLES, TUNE } from '/src/experience.js';
+import { SimHand } from '/src/sim.js';
+
+const q = new URLSearchParams(location.search);
+const sim = new SimHand(1280, 720);
+sim.step(0);                                               // paints the stand-in room (no hand at t = 0)
+if (q.get('bg') === 'bright') { const g = sim.ctx; g.fillStyle = 'rgba(235,238,240,0.82)'; g.fillRect(0, 0, 1280, 720); }
+const stage = new Stage(document.getElementById('gl'), sim.canvas);
+stage.bgU.uMirror.value = 0;
+stage.frameUpdated(false); for (let i = 0; i < 30; i++) stage._estimateLight(false);
+
+const names = ['metal', 'hybrid', 'anime'];
+const rows = (q.get('rows') || '0.25,5,22').split(',').map(Number);      // revolutions per second
+const R = rows.length > 2 ? 0.048 : 0.06;
+const cells = [];
+rows.forEach((rev, r) => names.forEach((name, c) => {
+  const ball = new SteelBall(stage.envTex);
+  ball.u.uMirror.value = 0; ball.setOcclusion(false);
+  stage.scene.add(ball.group);
+  const y = rows.length > 2 ? (1 - r) * 0.115 : (0.5 - r) * 0.15;
+  cells.push({ ball, name, rev, pos: new THREE.Vector3((c - 1) * 0.2, y, -0.5), axis: new THREE.Vector3(0.12, 1, 0.3).normalize() });
+}));
+
+const s3 = new THREE.Vector3();
+const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function frame(time, dt) {
+  for (const cell of cells) {
+    const S = STYLES[cell.name], omega = cell.rev * Math.PI * 2, fast = cell.rev > 12;
+    cell.ball.update({
+      center: cell.pos, radius: R, scale: 1, axis: cell.axis, omega, shutter: TUNE.shutter, dt, time,
+      appear: 1, streak: S.streak * sm(TUNE.idleRev * 2, TUNE.idleRev * 5.5, omega), toon: S.toon, glow: fast ? 0.7 : 0,
+      rings: cell.rev > 2 ? 0.9 : 0, ringScale: fast ? 1.3 : 1, halo: 0, gold: fast ? 1 : 0, palm: null, shadow: 0, bounce: 0,
+      tail: 0, tailFrom: null, flare: 0, wobble: S.wobble * sm(0, TUNE.idleRev * 6.283, omega),
+    });
+    const u = cell.ball.u, L = stage.light;
+    u.uLightDir.value.copy(L.dir); u.uLightCol.value.copy(L.col); u.uExposure.value = L.exposure;
+    const sc = stage.toScreen(cell.pos, s3); u.uScreen.value.set(sc.x, sc.y);
+  }
+  stage.render();
+}
+let T = 0;
+window.__lab = { advance(sec, step = 1 / 60) { for (let n = Math.round(sec / step); n > 0; n--) { T += step; frame(T, step); } return +T.toFixed(3); }, stage, cells };
+if (!q.has('manual')) { let last = performance.now(); const loop = () => { const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt; frame(T, dt); requestAnimationFrame(loop); }; loop(); }
+else window.__lab.advance(1);
+</script>
+</body>
+</html>

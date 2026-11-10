@@ -2,6 +2,42 @@
 
 Newest entry first. Each entry: what changed, what was checked and how, what is still wrong.
 
+## 2026-11-11 — ball look, second pass
+
+You asked for the ball look to be refined first.
+
+### Added
+
+`prototypes/c-ball-lab.html`: the ball on its own, large, in all three styles at three spin
+speeds (nearly still, resting, thrown). This is now the place to judge the look; add
+`?bg=bright` for a bright room.
+
+### Changes
+
+| Problem seen | Change |
+|---|---|
+| Spin streaks read as watermelon stripes: long zigzag lines right round the ball | Streaks are now finite horizontal strokes whose ends break into pointed teeth, as in `3GACRm9WXFc @ 20.4`. Dark marks are short and sparse |
+| Anime style was not really cel shaded | Ink outline at the silhouette, one large hard-edged highlight patch with a hot core, soft speculars removed, channel drawn as a mid-green floor between inked walls |
+| Channel edges were blocky under highlights | Wall normals now come from finite differences on the sphere, not from screen-space derivatives |
+| Channels too thin against the references | Widened by about a sixth |
+| Ball looked like glass on real footage | Its reflection sampled the camera frame directly behind it. It now samples the frame flipped and from the frame's centre, with more contrast |
+| Glow was cut into polygons on the hand | The glow no longer depth-tests against the finger stand-ins |
+| Reflections were visibly pixelated | Reflection image is 160×90 and blurred, up from 64×36 |
+| Spinning metal looked plain | Added the pole-to-pole highlight streak seen on the real spinning props |
+| Thrown metal ball went flat yellow | Gold energy is now a rim, not a fill |
+
+### Checked
+
+Ball lab screenshots of all nine cells, and the real-hand clip in hybrid, anime and metal.
+Not checked on a live webcam by me.
+
+### Still open
+
+- Hybrid streaks are closer to the references but still busier than the anime's.
+- The thrown metal ball has little surface detail.
+- The reflection is a stand-in (the flipped camera frame); a webcam cannot see what is
+  really behind it.
+
 ## 2026-11-11 — first complete pass (prototypes A–F)
 
 ### How things were checked

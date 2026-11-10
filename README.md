@@ -80,7 +80,7 @@ Sound is synthesised by default. To use recordings, see `assets/audio/README.md`
 
 ```
 index.html                 the experience
-prototypes/                Prototype A: hand tracking only
+prototypes/                A: hand tracking only · C: ball lab (every style and spin speed, no camera)
 src/tracking.js            landmarks -> metric 3D hand, filters, gestures
 src/source.js              webcam / test video / synthetic hand -> frames
 src/ball.js                ball shader, rings, shadow, tail, sparks, finger stand-ins
