@@ -32,6 +32,12 @@
   #hint { position: fixed; left: 0; right: 0; top: 16px; text-align: center; z-index: 3; pointer-events: none; text-shadow: 0 1px 6px #000; font-size: 15px; transition: opacity .4s; }
 
   #calib { position: fixed; right: 14px; top: 14px; width: 300px; padding: 14px 16px; border-radius: 12px; background: rgba(8, 12, 9, .82); backdrop-filter: blur(8px); z-index: 4; display: none; }
+  #hatPanel { position: fixed; left: 14px; top: 14px; width: 230px; padding: 12px 14px; border-radius: 12px; background: rgba(8, 12, 9, .82); backdrop-filter: blur(8px); z-index: 4; display: none; }
+  #hatPanel h2 { margin: 0 0 4px; font-size: 15px; }
+  #hatPanel label { display: flex; justify-content: space-between; margin: 8px 0 2px; font-size: 12px; opacity: .8; }
+  #hatPanel input[type=range] { width: 100%; accent-color: var(--lime); }
+  #hatPanel .row { display: flex; gap: 8px; margin-top: 10px; }
+  #hatPanel .row button { flex: 1; padding: 7px; border-radius: 8px; border: 0; background: #223020; }
   #calib h2 { margin: 0 0 6px; font-size: 15px; }
   #calib p { margin: 0 0 10px; opacity: .8; font-size: 13px; }
   #calib label { display: block; margin: 8px 0 3px; font-size: 12px; opacity: .75; }
@@ -77,6 +83,19 @@
   <button id="bOcc" aria-pressed="true">Finger occlusion<kbd>O</kbd></button>
   <button id="bMute" aria-pressed="false">Mute<kbd>N</kbd></button>
   <button id="bFill" aria-pressed="false">Fill<kbd>F</kbd></button>
+</div>
+
+<div id="hatPanel">
+  <h2>Hat fit</h2>
+  <label for="hSize">Size <output id="hSizeO"></output></label>
+  <input id="hSize" type="range" min="0.7" max="1.5" step="0.01" value="1">
+  <label for="hHeight">Height <output id="hHeightO"></output></label>
+  <input id="hHeight" type="range" min="-0.06" max="0.08" step="0.002" value="0">
+  <label for="hDepth">Forward / back <output id="hDepthO"></output></label>
+  <input id="hDepth" type="range" min="-0.06" max="0.06" step="0.002" value="0">
+  <label for="hTilt">Tilt back <output id="hTiltO"></output></label>
+  <input id="hTilt" type="range" min="-0.4" max="0.6" step="0.01" value="0">
+  <div class="row"><button id="hReset">Reset</button><button id="hClose">Hide</button></div>
 </div>
 
 <div id="calib">

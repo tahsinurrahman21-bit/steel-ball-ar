@@ -39,7 +39,7 @@ missing, download it from
 | `D` | Debug | Landmarks, skeleton, palm axes, gesture and timing readouts |
 | `S` | Style | Cycles hybrid → anime → metal |
 | `L` | Look | Switches between the current ball (new) and the first version (classic) |
-| `G` | Hat | Gyro's hat on your head (loads a face-tracking model the first time) |
+| `G` | Hat | Gyro's hat on your head (loads a face-tracking model the first time). A **Hat fit** panel appears with size, height, forward/back and tilt sliders; the fit is saved |
 | `C` | Calibrate | Real-object calibration panel |
 | `M` | Mirror | Selfie mirroring on/off |
 | `O` | Finger occlusion | Fingers in front of the ball hide it |

@@ -160,7 +160,8 @@ export class GyroHat {
     for (const o of this.hat.children) o.renderOrder = 3;
 
     this.on = false; this.amount = 0;                               // 0..1 pop-in
-    this.size = 1; this.height = 0;                                 // user trim: overall size, extra height (metres)
+    // user fit: overall size, extra height and forward shift (metres), extra backward tilt (radians)
+    this.size = 1; this.height = 0; this.depth = 0; this.tilt = 0;
   }
 
   // head: HeadTracker state; light: {dir, exposure}
@@ -174,7 +175,8 @@ export class GyroHat {
     this.group.position.copy(head.center).addScaledVector(head.z, -0.02);
     this.head.position.set(0, -0.012, 0);
     const k = this.amount, pop = 1 + 0.18 * Math.sin(Math.PI * k) * (1 - k);
-    this.hat.position.set(0, head.forehead * 0.86 + this.height + (1 - k) * 0.06, 0.004);
+    this.hat.position.set(0, head.forehead * 0.86 + this.height + (1 - k) * 0.06, 0.004 + this.depth);
+    this.hat.rotation.x = -0.1 - this.tilt;
     this.hat.scale.set(this.size * pop, this.size * pop, this.size * 1.13 * pop);
     for (const m of this.mats) { m.uniforms.uLightDir.value.copy(light.dir); m.uniforms.uExposure.value = Math.min(1.08, 0.72 + light.exposure * 0.3); m.uniforms.uAlpha.value = Math.min(1, k * 1.6); }
   }

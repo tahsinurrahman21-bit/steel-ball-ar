@@ -101,21 +101,28 @@ async function start() {
 const STYLE_ORDER = ['hybrid', 'anime', 'metal'];
 // Gyro's hat: switching it on loads the face model the first time
 async function setHat(on) {
-  hat.on = on; $('bHat').setAttribute('aria-pressed', on);
+  hat.on = on; $('bHat').setAttribute('aria-pressed', on); $('hatPanel').style.display = on ? 'block' : 'none';
   if (!on || !running && !stage) return;
   try { await source.enableFace(true); } catch (e) { console.warn('hat: face model failed to load', e); hat.on = false; $('bHat').setAttribute('aria-pressed', false); }
 }
 // style and look are remembered between visits
 const PREFS = 'steelball.prefs.v1';
-try { const p = JSON.parse(localStorage.getItem(PREFS) || '{}'); if (STYLE_ORDER.includes(p.style)) TUNE.style = p.style; if (p.look === 'classic' || p.look === 'new') TUNE.look = p.look; hat.on = !!p.hat; } catch { /* ignore */ }
+try { const p = JSON.parse(localStorage.getItem(PREFS) || '{}'); if (STYLE_ORDER.includes(p.style)) TUNE.style = p.style; if (p.look === 'classic' || p.look === 'new') TUNE.look = p.look; hat.on = !!p.hat; for (const k of ['size', 'height', 'depth', 'tilt']) if (Number.isFinite(p.fit?.[k])) hat[k] = p.fit[k]; } catch { /* ignore */ }
 if (q.has('hat')) hat.on = q.get('hat') !== '0';
 if (STYLE_ORDER.includes(q.get('style'))) TUNE.style = q.get('style');
 if (q.get('look') === 'classic' || q.get('look') === 'new') TUNE.look = q.get('look');
 const showPrefs = (save = true) => {
   $('bStyle').firstChild.textContent = `Style: ${TUNE.style}`; $('bLook').firstChild.textContent = `Look: ${TUNE.look}`;
-  if (save) { try { localStorage.setItem(PREFS, JSON.stringify({ style: TUNE.style, look: TUNE.look, hat: hat.on })); } catch { /* private mode */ } }
+  if (save) { try { localStorage.setItem(PREFS, JSON.stringify({ style: TUNE.style, look: TUNE.look, hat: hat.on, fit: { size: hat.size, height: hat.height, depth: hat.depth, tilt: hat.tilt } })); } catch { /* private mode */ } }
 };
 showPrefs(false);
+// hat fit sliders
+const FIT = [['hSize', 'size', (v) => `${Math.round(v * 100)}%`], ['hHeight', 'height', (v) => `${(v * 100).toFixed(1)} cm`], ['hDepth', 'depth', (v) => `${(v * 100).toFixed(1)} cm`], ['hTilt', 'tilt', (v) => `${Math.round((v * 180) / Math.PI)}°`]];
+const showFit = () => { for (const [id, key, fmt] of FIT) { $(id).value = hat[key]; $(`${id}O`).textContent = fmt(hat[key]); } };
+for (const [id, key] of FIT) $(id).oninput = (e) => { hat[key] = Number(e.target.value); showFit(); showPrefs(); };
+$('hReset').onclick = () => { hat.size = 1; hat.height = 0; hat.depth = 0; hat.tilt = 0; showFit(); showPrefs(); };
+$('hClose').onclick = () => { $('hatPanel').style.display = 'none'; };
+showFit();
 const actions = {
   d: () => { debug.enabled = !debug.enabled; $('bDebug').setAttribute('aria-pressed', debug.enabled); },
   s: () => { TUNE.style = STYLE_ORDER[(STYLE_ORDER.indexOf(TUNE.style) + 1) % 3]; showPrefs(); },
