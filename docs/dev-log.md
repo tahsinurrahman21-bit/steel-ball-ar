@@ -2,6 +2,31 @@
 
 Newest entry first. Each entry: what changed, what was checked and how, what is still wrong.
 
+## 2026-11-12 — Gyro's hat
+
+A **Hat** toggle (`G`) puts Gyro's hat on the tracked head.
+
+- **References.** The anime frames (`WhrRNqDzias @ 55, 125`, `MClSzMJY-bY @ 15, 113`) and
+  the ArtStation piece "Gyro Zeppeli hat" by Frizzarin. That page shows renders only and
+  offers no file, so it was used as a visual reference; the geometry here is built from
+  scratch. From the model: flat-topped round crown with window slots, wide flat brim with
+  radial slots, strap with two slotted goggles and side knobs. From the anime: the brown
+  leather colour and grey strap and goggles (the model itself is tan).
+- **Head tracking.** MediaPipe Face Landmarker, loaded only when the hat is first switched
+  on. Pose comes from four landmarks (forehead top, chin, both cheek edges); distance from
+  an assumed 14.5 cm face width.
+- **Occlusion.** The brim slots are real holes. A depth-only stand-in for the head hides
+  the far side of the brim; the existing finger stand-ins put a raised hand in front of
+  the hat.
+- **Checked** on the synthetic scene and on the first second of the real-hand clip, where
+  the hat sat on the person's head and followed its tilt. Not checked on a live webcam.
+- **Bug found on the way:** the hat's colours came out dark orange because they were
+  created before colour management was switched off.
+
+Still rough: the goggles are plain boxes, there is no brim shadow on the face, the head
+stand-in leaves a hard curved edge on the brim behind the head, and hat size is fixed to
+an average head (`size` and `height` on the hat object are there for trimming).
+
 ## 2026-11-11 — both looks kept
 
 You like the current ball and the previous one, so both stay.

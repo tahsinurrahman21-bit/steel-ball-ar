@@ -81,6 +81,14 @@ export class SimHand {
     };
   }
 
+  // The four face landmarks the hat needs (top of forehead, chin, both cheek edges), matching the painted head.
+  face() {
+    const f = [];
+    f[10] = { x: 0.5, y: 0.52 - 0.15, z: 0 }; f[152] = { x: 0.5, y: 0.52 + 0.17, z: 0 };
+    f[234] = { x: 0.5 - 0.072, y: 0.5, z: 0.02 }; f[454] = { x: 0.5 + 0.072, y: 0.5, z: 0.02 };
+    return { faceLandmarks: [f] };
+  }
+
   paint(lm, cam, p) {
     const g = this.ctx, W = this.canvas.width, H = this.canvas.height;
     // a plain "room": wall gradient, window light on the left, desk line

@@ -39,6 +39,7 @@ missing, download it from
 | `D` | Debug | Landmarks, skeleton, palm axes, gesture and timing readouts |
 | `S` | Style | Cycles hybrid → anime → metal |
 | `L` | Look | Switches between the current ball (new) and the first version (classic) |
+| `G` | Hat | Gyro's hat on your head (loads a face-tracking model the first time) |
 | `C` | Calibrate | Real-object calibration panel |
 | `M` | Mirror | Selfie mirroring on/off |
 | `O` | Finger occlusion | Fingers in front of the ball hide it |
@@ -94,6 +95,7 @@ src/stage.js               renderer, camera grade, lens effects
 src/experience.js          state machine and choreography; tuning values at the top
 src/audio.js               sound
 src/calibration.js         real-object calibration
+src/hat.js                 Gyro's hat and the head tracking it rides on
 src/sim.js, src/debug.js   synthetic test hand, debug overlay
 docs/                      reference analysis, model comparison, development log
 assets/                    hand model, audio, 3D models (see docs/model-comparison.md)

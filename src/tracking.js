@@ -4,7 +4,7 @@
 //   "raw"     MediaPipe camera frame: x right, y down, z away from camera (unmirrored image).
 //   "display" Three.js camera frame:  x right, y up,   z toward the viewer, metres.
 //             When the view is mirrored (selfie), display x is flipped as well.
-import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+import { FaceLandmarker, FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 
 export const CONFIG = {
   hfovDeg: 62,            // assumed horizontal field of view of the webcam
@@ -25,7 +25,7 @@ export const BONES = [
 ];
 
 // One-Euro filter over a Float32Array (Casiez et al.): low lag when moving, low jitter at rest.
-class OneEuro {
+export class OneEuro {
   constructor(n, minCutoff, beta, dCutoff = 1.5) {
     this.n = n; this.minCutoff = minCutoff; this.beta = beta; this.dCutoff = dCutoff;
     this.x = null; this.dx = new Float32Array(n);
@@ -50,6 +50,16 @@ const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const len = (a) => Math.hypot(a[0], a[1], a[2]);
 const norm = (a) => { const l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+
+export async function createFaceLandmarker() {
+  const fileset = await FilesetResolver.forVisionTasks('/node_modules/@mediapipe/tasks-vision/wasm');
+  const opts = (delegate) => ({
+    baseOptions: { modelAssetPath: '/assets/mediapipe/face_landmarker.task', delegate },
+    runningMode: 'VIDEO', numFaces: 1,
+  });
+  try { return await FaceLandmarker.createFromOptions(fileset, opts('GPU')); }
+  catch (e) { console.warn('GPU delegate unavailable for the face model, using CPU', e); return FaceLandmarker.createFromOptions(fileset, opts('CPU')); }
+}
 
 export async function createLandmarker() {
   const fileset = await FilesetResolver.forVisionTasks('/node_modules/@mediapipe/tasks-vision/wasm');

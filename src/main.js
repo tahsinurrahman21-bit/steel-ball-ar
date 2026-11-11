@@ -6,6 +6,7 @@ import { SteelBall } from './ball.js';
 import { Sound } from './audio.js';
 import { Experience, TUNE } from './experience.js';
 import { Calibration } from './calibration.js';
+import { GyroHat, HeadTracker } from './hat.js';
 
 const q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -13,6 +14,8 @@ const source = new FrameSource(), tracker = new HandTracker(), sound = new Sound
 const debug = new DebugOverlay($('overlay'));
 debug.enabled = q.has('debug');
 let stage, ball, exp, calib, hand = null, running = false;
+const headTracker = new HeadTracker(), hat = new GyroHat();
+let head = null;
 
 const HINTS = {
   idle: 'Show an open palm to the camera', summon: 'Hold it…', ready: 'Keep your palm open · snap toward the camera to throw',
@@ -35,11 +38,14 @@ async function start() {
   stage.scene.add(ball.group);
   exp = new Experience(stage, ball, sound);
   ball.setLook(TUNE.look);
+  stage.scene.add(hat.group);
+  setHat(hat.on);
   calib = new Calibration({ source, tracker, stage, panel: $('calib'), out: $('cOut'), preset: $('cPreset'), diam: $('cDiam'), capture: $('cCapture'), reset: $('cReset') });
   calib.load();
 
-  source.onFrame = (result, t) => {
+  source.onFrame = (result, t, face) => {
     hand = tracker.update(result, t, source.aspect);
+    head = hat.on ? headTracker.update(face?.faceLandmarks?.[0], source.width, source.height, tracker.mirror, t) : null;
     stage.frameUpdated(tracker.mirror);
     if (calib.active) calib.onFrame(hand);
   };
@@ -50,6 +56,7 @@ async function start() {
     stage.bgU.uMirror.value = tracker.mirror ? 1 : 0; ball.u.uMirror.value = tracker.mirror ? 1 : 0;
     if (calib.active) { if (exp.state !== 'idle') exp._enter('idle'); exp.appear = 0; exp.cooldown = 0.3; }   // real ball only while calibrating
     exp.update(hand, dt, now);
+    hat.update(head, stage.light, dt);
     stage.render();
     debug.resize(stage.w, stage.h);
     debug.draw(hand, [
@@ -92,19 +99,27 @@ async function start() {
 }
 
 const STYLE_ORDER = ['hybrid', 'anime', 'metal'];
+// Gyro's hat: switching it on loads the face model the first time
+async function setHat(on) {
+  hat.on = on; $('bHat').setAttribute('aria-pressed', on);
+  if (!on || !running && !stage) return;
+  try { await source.enableFace(true); } catch (e) { console.warn('hat: face model failed to load', e); hat.on = false; $('bHat').setAttribute('aria-pressed', false); }
+}
 // style and look are remembered between visits
 const PREFS = 'steelball.prefs.v1';
-try { const p = JSON.parse(localStorage.getItem(PREFS) || '{}'); if (STYLE_ORDER.includes(p.style)) TUNE.style = p.style; if (p.look === 'classic' || p.look === 'new') TUNE.look = p.look; } catch { /* ignore */ }
+try { const p = JSON.parse(localStorage.getItem(PREFS) || '{}'); if (STYLE_ORDER.includes(p.style)) TUNE.style = p.style; if (p.look === 'classic' || p.look === 'new') TUNE.look = p.look; hat.on = !!p.hat; } catch { /* ignore */ }
+if (q.has('hat')) hat.on = q.get('hat') !== '0';
 if (STYLE_ORDER.includes(q.get('style'))) TUNE.style = q.get('style');
 if (q.get('look') === 'classic' || q.get('look') === 'new') TUNE.look = q.get('look');
 const showPrefs = (save = true) => {
   $('bStyle').firstChild.textContent = `Style: ${TUNE.style}`; $('bLook').firstChild.textContent = `Look: ${TUNE.look}`;
-  if (save) { try { localStorage.setItem(PREFS, JSON.stringify({ style: TUNE.style, look: TUNE.look })); } catch { /* private mode */ } }
+  if (save) { try { localStorage.setItem(PREFS, JSON.stringify({ style: TUNE.style, look: TUNE.look, hat: hat.on })); } catch { /* private mode */ } }
 };
 showPrefs(false);
 const actions = {
   d: () => { debug.enabled = !debug.enabled; $('bDebug').setAttribute('aria-pressed', debug.enabled); },
   s: () => { TUNE.style = STYLE_ORDER[(STYLE_ORDER.indexOf(TUNE.style) + 1) % 3]; showPrefs(); },
+  g: () => { setHat(!hat.on); showPrefs(); },
   l: () => { TUNE.look = TUNE.look === 'new' ? 'classic' : 'new'; ball?.setLook(TUNE.look); showPrefs(); },
   c: () => { if (!calib) return; calib.toggle(); $('bCalib').setAttribute('aria-pressed', calib.active); },
   m: () => { tracker.mirror = !tracker.mirror; tracker.reset(); $('bMirror').setAttribute('aria-pressed', tracker.mirror); },
@@ -118,10 +133,10 @@ addEventListener('keydown', (e) => {
   if (e.target?.matches?.('input, select') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   actions[e.key.toLowerCase()]?.();
 });
-for (const [id, key] of [['bDebug', 'd'], ['bStyle', 's'], ['bLook', 'l'], ['bCalib', 'c'], ['bMirror', 'm'], ['bOcc', 'o'], ['bMute', 'n'], ['bFill', 'f']]) $(id).onclick = actions[key];
+for (const [id, key] of [['bDebug', 'd'], ['bStyle', 's'], ['bLook', 'l'], ['bHat', 'g'], ['bCalib', 'c'], ['bMirror', 'm'], ['bOcc', 'o'], ['bMute', 'n'], ['bFill', 'f']]) $(id).onclick = actions[key];
 $('bDebug').setAttribute('aria-pressed', debug.enabled);
 $('go').onclick = start;
 if (q.has('sim') || q.has('video')) start();
 
 // handles for testing from the console
-window.__app = { get exp() { return exp; }, get hand() { return hand; }, get stage() { return stage; }, get ball() { return ball; }, source, tracker, sound, TUNE, CONFIG };
+window.__app = { get exp() { return exp; }, get hand() { return hand; }, get stage() { return stage; }, get ball() { return ball; }, get head() { return head; }, hat, source, tracker, sound, TUNE, CONFIG };
