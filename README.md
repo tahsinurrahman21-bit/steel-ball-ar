@@ -81,12 +81,14 @@ Two sound banks, switched with `V`:
 - **synth** (default): built with the Web Audio API from measurements of the reference clips.
 - **SBR**: lifted from the Spin montage. The real pulsed Spin tone, isolated from the mix;
   the gold-comet roar with the music removed, cut off at impact; the activation shimmer;
-  and the tone's two-stage onset (its 626 Hz partial first, then 848 Hz).
+  and the tone's two-stage onset (its 626 Hz partial first, then 848 Hz). The impact (the
+  ball's hit in episode 1) and the materialise clink (episode 3's star flash) come from the
+  `best` clips.
 
 The SBR sounds are cut from your video, so they are not committed. Recreate them with:
 
 ```bash
-python -I tools/extract_sbr_audio.py videos/special/InShot_20261112_133246086.mp4 assets/audio/sbr
+python -I tools/extract_sbr_audio.py videos/special/InShot_20261112_133246086.mp4 assets/audio/sbr videos/best
 ```
 
 To use your own recordings instead, see `assets/audio/README.md`.

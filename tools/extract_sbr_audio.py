@@ -1,10 +1,15 @@
 """Lift the Steel Ball sounds out of the reference montage.
-usage: python -I tools/extract_sbr_audio.py videos/special/InShot_20261112_133246086.mp4 assets/audio/sbr
+usage: python -I tools/extract_sbr_audio.py videos/special/InShot_20261112_133246086.mp4 assets/audio/sbr [videos/best]
 
 spin_loop.wav  the pulsed Spin tone, isolated by keeping only its narrow partials (everything
                else in the mix is filtered away), made loopable with a crossfade
 throw.wav      the gold-comet roar, band-limited, with the music lines removed (harmonic/noise split)
 activate.wav   the activation shimmer, band-passed above the voice range, with fades
+
+With the videos/best folder as a third argument, also:
+impact.wav      the ball hitting the gunman's arm (episode 1), straight after near-silence
+materialize.wav the star-flash clink as the ball snaps into the holster (episode 3)
+Both have their tonal lines (music, voices) removed the same way as the throw roar.
 """
 import os, subprocess, sys, wave
 import numpy as np
@@ -12,12 +17,13 @@ from scipy import signal
 from scipy.ndimage import median_filter
 
 src, out = sys.argv[1], sys.argv[2]
+best = sys.argv[3] if len(sys.argv) > 3 else None
 os.makedirs(out, exist_ok=True)
 SR = 44100
 
 
-def load(t0, t1):
-    raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(t0), "-t", str(t1 - t0), "-i", src,
+def load(t0, t1, path=None):
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(t0), "-t", str(t1 - t0), "-i", path or src,
                           "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"], capture_output=True).stdout
     return np.frombuffer(raw, dtype=np.float32).astype(np.float64)
 
@@ -73,12 +79,28 @@ r = load(64.40, 66.02)
 r = signal.sosfiltfilt(signal.butter(2, 90 / (SR / 2), "high", output="sos"), r)
 r = signal.sosfiltfilt(signal.butter(2, 12000 / (SR / 2), "low", output="sos"), r)
 # music under the roar shows as steady horizontal lines; keep only the broadband part
-f, t, Z = signal.stft(r, SR, nperseg=2048, noverlap=1536)
-M = np.abs(Z)
-Hm, Pm = median_filter(M, size=(1, 17)), median_filter(M, size=(17, 1))
-_, r2 = signal.istft(Z * Pm**2 / (Pm**2 + Hm**2 + 1e-12), SR, nperseg=2048, noverlap=1536)
-save("throw.wav", fades(r2[:len(r)], 0.03, 0.35), -3)
+def untone(x):
+    """Keep the broadband part; drop steady horizontal lines (music, held notes)."""
+    f, t, Z = signal.stft(x, SR, nperseg=2048, noverlap=1536)
+    M = np.abs(Z)
+    Hm, Pm = median_filter(M, size=(1, 17)), median_filter(M, size=(17, 1))
+    _, y = signal.istft(Z * Pm**2 / (Pm**2 + Hm**2 + 1e-12), SR, nperseg=2048, noverlap=1536)
+    return y[:len(x)]
+
+
+save("throw.wav", fades(untone(r), 0.03, 0.35), -3)
 
 # ---- activation shimmer (42.33-42.98 s), above the voice range under it
 a = load(42.33, 42.98)
 save("activate.wav", fades(band(a, 900, 6000), 0.06, 0.25), -6)
+
+if best:
+    def clip(vid):
+        return os.path.join(best, next(f for f in sorted(os.listdir(best)) if vid in f))
+    hp = signal.butter(2, 50 / (SR / 2), "high", output="sos")
+    # impact: onset at 7.40 s; keep the hit and its first rumble, fade before the voices
+    i = signal.sosfiltfilt(hp, load(7.37, 8.17, clip("PUKeJSM_OPg")))
+    save("impact.wav", fades(untone(i), 0.004, 0.45), -1)
+    # materialise: the star-flash clink at 14.27 s
+    m = signal.sosfiltfilt(hp, load(14.24, 14.84, clip("xgQQpKhIeCo")))
+    save("materialize.wav", fades(untone(m), 0.004, 0.35), -4)

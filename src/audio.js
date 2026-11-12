@@ -10,6 +10,8 @@
 //          from the mix (assets/audio/sbr/spin_loop.wav), the gold-comet roar with the music
 //          removed (throw.wav), and the activation shimmer (activate.wav). The tone's measured
 //          onset is kept: its 626 Hz partial sounds first, then the 848 Hz tone takes over.
+//          From the best clips: the ball's hit in episode 1 (impact.wav) and the star-flash clink
+//          of episode 3 (materialize.wav). Only the dissolve stays synthesised.
 const SAMPLE_NAMES = ['activate', 'materialize', 'spin_loop', 'throw', 'impact'];
 
 export class Sound {
@@ -75,7 +77,7 @@ export class Sound {
   }
 
   async _loadSbr() {
-    for (const name of ['spin_loop', 'throw', 'activate']) {
+    for (const name of ['spin_loop', 'throw', 'activate', 'materialize', 'impact']) {
       try { this.sbr[name] = await this.ctx.decodeAudioData(await (await fetch(`/assets/audio/sbr/${name}.wav`)).arrayBuffer()); }
       catch (e) { console.warn(`audio: sbr ${name} missing`, e); }
     }
@@ -152,6 +154,7 @@ export class Sound {
   materialize() {
     if (!this.ctx || !this._cool('materialize', 0.8)) return;
     if (this._sample('materialize')) return;
+    if (this.bank === 'sbr' && this.sbr.materialize) { this._play(this.sbr.materialize, 0.9); return; }   // the star-flash clink
     const t = this.ctx.currentTime;
     this._sweep(t, 0.16, 500, 50, 0.5);
     this._noise(t, 1.3, 'highpass', 600, 2500, 0.7, 0.16, 0.005);
@@ -203,6 +206,7 @@ export class Sound {
     this._stopRoar(0.04);
     if (!this._cool('impact', 0.5)) return;
     if (this._sample('impact')) return;
+    if (this.bank === 'sbr' && this.sbr.impact) { this._play(this.sbr.impact, 1.0); return; }               // the episode 1 hit
     const t = this.ctx.currentTime;
     this._sweep(t, 0.6, 130, 32, 0.9, 'sine', 0.004);
     this._noise(t, 0.35, 'lowpass', 6000, 300, 0.7, 0.5, 0.002);

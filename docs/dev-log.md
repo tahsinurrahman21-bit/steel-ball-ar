@@ -34,7 +34,15 @@ is the one kept. Compared side by side with `InShot @ 24.84, 25.48` in
 - Activation: the shimmer at 42.33–42.98 s, band-passed above the voice under it.
 - Onset: in the reference the 626 Hz partial sounds first and the 848 Hz tone takes over;
   the SBR activation swells a 626 Hz tone while the loop fades in.
-- Materialise, impact and dissolve stay synthesised: the montage has no clean version.
+- Materialise, impact and dissolve were synthesised at first: the montage has no clean
+  version. Later the `best` clips were scanned for sharp broadband hits, ranked by how far
+  they jump above what precedes them and how noise-like they are. Two fit:
+  - **impact:** the ball hitting the gunman's arm in episode 1 (`PUKeJSM_OPg @ 7.40`, the
+    same moment as `WhrRNqDzias @ 109.16`), which starts out of near-silence;
+  - **materialise:** the star-flash clink as the ball snaps into the holster in episode 3
+    (`xgQQpKhIeCo @ 14.27`).
+  Both had their tonal lines removed like the throw roar. Only the dissolve is still
+  synthesised. Not yet listened to by you.
 
 **Checked:** the loop's pulse, partials and seam, the roar's lack of tonal lines, and the
 bank switching were checked by measurement (I cannot hear). **Confirmed by you by ear:**
