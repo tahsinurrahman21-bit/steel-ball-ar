@@ -21,6 +21,9 @@ const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const backOut = (t) => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);
 
 // Which ball gets the screen when two are active: the one doing the most.
+// Two throws this close together (seconds) count as one double throw.
+export const DOUBLE_WINDOW = 0.3;
+
 export const STATE_RANK = { idle: 0, dissolve: 1, ready: 2, summon: 3, throw: 4, impact: 5 };
 
 export class Experience {
@@ -39,10 +42,13 @@ export class Experience {
     // With two balls, only the 'lead' one drives the screen-wide effects; the other lights its own hand.
     // Each ball reports its spin sound here and the app mixes them into one voice.
     this.lead = true; this.spinOut = { level: 0, rate: 0, pan: 0, approach: 0 };
+    // Double throw: the other hand's ball, and whether both were thrown together
+    this.partner = null; this.double = false; this.launchedAt = -1e9; this.now = 0; this.sx = 0.5; this.sy = 0.5;
+    this.aim = new THREE.Vector3(); this.aimTarget = new THREE.Vector3(); this._aimed = new THREE.Vector3();
     this._s = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
 
-  _enter(state) { this.state = state; this.t = 0; this.fired = {}; }
+  _enter(state) { this.state = state; this.t = 0; this.fired = {}; if (state === 'idle') this.double = false; }
 
   launch(vel) {
     this._enter('throw'); this.throws++;
@@ -52,6 +58,16 @@ export class Experience {
     this.pT.set(this.p0.x * 0.08, this.p0.y * 0.08 - 0.004, -0.072);        // straight at the lens
     this.flightDir.copy(this.pT).sub(this.p0).normalize();
     this.spinDir = this.flightDir.clone().add(new THREE.Vector3(0.25, 0.55, 0)).normalize();   // rifling, tipped so the swirl sits off-centre
+    this.aim.set(0, 0, 0); this.aimTarget.set(0, 0, 0); this.double = false;
+    const p = this.partner;
+    if (p && p.state === 'throw' && this.now - p.launchedAt < DOUBLE_WINDOW) {
+      // both hands threw together: arrive at the lens at the same moment, either side of centre
+      this.double = p.double = true;
+      this.T = Math.max(0.35, p.T - p.t);
+      const side = Math.sign(this.p0.x - p.p0.x) || 1;
+      this.aimTarget.set(side * 0.03, 0.005, 0); p.aimTarget.set(-side * 0.03, -0.005, 0);
+    }
+    this.launchedAt = this.now;
     this.ball.spawn(1, 26, this.p0, this.radius);
     this.imp.flare = 1; this.imp.ca = 0.005;
     this.sound.throwBall(this.T);
@@ -59,6 +75,7 @@ export class Experience {
 
   // hand: latest tracker state (may be stale between camera frames), dt/time in seconds.
   update(hand, dt, time) {
+    this.now = time;
     const present = !!hand?.present;
     this.lostFor = present ? 0 : this.lostFor + dt;
     const S = STYLES[TUNE.style], fx = this.fx, T = {};
@@ -127,9 +144,11 @@ export class Experience {
       }
       case 'throw': {
         const u = Math.min(1, this.t / this.T), s = Math.pow(u, 1.15);
-        this.pos.lerpVectors(this.p0, this.pT, s);
+        this.aim.lerp(this.aimTarget, 1 - Math.exp(-dt / 0.08));
+        const target = this._aimed.copy(this.pT).add(this.aim);
+        this.pos.lerpVectors(this.p0, target, s);
         this.pos.y += Math.sin(Math.PI * s) * 0.028;                                    // slight rise
-        this.tailFrom.lerpVectors(this.p0, this.pT, Math.max(0, s - 0.42));
+        this.tailFrom.lerpVectors(this.p0, target, Math.max(0, s - 0.42));
         this.omega += (TUNE.throwRev * Math.PI * 2 - this.omega) * (1 - Math.exp(-dt / 0.1));
         this.axis.lerp(this.spinDir, 1 - Math.exp(-dt / 0.12)).normalize();
         this.appear = 1; this.scale = 1; level = 1; approach = u; tail = sm(0.02, 0.2, u);
@@ -138,7 +157,7 @@ export class Experience {
         this.ringScale = 1 + 0.5 * u;
         if (u >= 1) {
           this._enter('impact'); this.sound.impact();
-          this.imp.flash = 1; this.imp.shock = 0; this.imp.shockAmt = 1; this.imp.shake = 1; this.imp.ca = 0.012;
+          this.imp.flash = 1; this.imp.shock = 0; this.imp.shockAmt = 1; this.imp.shake = this.double ? 1.5 : 1; this.imp.ca = this.double ? 0.016 : 0.012;
           this.pos.set(0, 0, -0.3); this.ball.spawn(1, 40, this.pos, 0.03);
         }
         break;
@@ -189,6 +208,7 @@ export class Experience {
     const sc = this.stage.toScreen(this.pos, this._s);
     const cx = clamp(sc.x, -0.2, 1.2), cy = clamp(sc.y, -0.2, 1.2);
     bu.uScreen.value.set(cx, cy);
+    this.sx = cx; this.sy = cy;
     const bg = this.stage.bgU, po = this.stage.postU;
     const so = this.spinOut;
     so.level = level * this.appear; so.rate = this.omega / (Math.PI * 2); so.pan = (cx - 0.5) * 1.5; so.approach = approach;

@@ -130,7 +130,7 @@ export class Sound {
 
   // Release: sharp rising whoosh.
   throwBall(duration = 0.8) {
-    if (!this.ctx || !this._cool('throw', 0.5)) return;
+    if (!this.ctx || !this._cool('throw', 0.15)) return;
     if (this._sample('throw')) return;
     const t = this.ctx.currentTime;
     this._noise(t, 0.12, 'highpass', 3000, 6000, 0.7, 0.3, 0.003);            // snap of the release

@@ -38,7 +38,7 @@ missing, download it from
 |---|---|---|
 | `D` | Debug | Landmarks, skeleton, palm axes, gesture and timing readouts |
 | `S` | Style | Cycles hybrid → anime → metal |
-| `2` | Two hands | A ball on each hand, each summoned and thrown on its own |
+| `2` | Two hands | A ball on each hand, each summoned and thrown on its own. Snap both hands forward together for a double throw |
 | `L` | Look | Switches between the current ball (new) and the first version (classic) |
 | `G` | Hat | Gyro's hat on your head (loads a face-tracking model the first time). A **Hat fit** panel appears with size, height, forward/back and tilt sliders; the fit is saved |
 | `C` | Calibrate | Real-object calibration panel |
@@ -114,5 +114,6 @@ rendered frames to `captures/` (see `__cap` in the dev log). `captures/` is not 
 - `/?video=/path/to/clip.mp4` uses a video file instead of the webcam.
 - Add `&manual=1` and drive frames from the console with `__app.advance(seconds)` (sim)
   or `await __app.play(from, to)` (video). This is how the build was checked.
-- `&hands=2` starts in two-hand mode; with `?sim=1` a second, mirrored test hand joins in.
+- `&hands=2` starts in two-hand mode; with `?sim=1` a second, mirrored test hand joins in,
+  1.6 s behind the first. `&simoffset=0.1` makes it a double throw.
 - `&debug=1` starts with the overlay on, `&mute=1` starts silent, `&mirror=0` unmirrored.

@@ -2,6 +2,25 @@
 
 Newest entry first. Each entry: what changed, what was checked and how, what is still wrong.
 
+## 2026-11-12 — double throw
+
+Throwing with both hands within 0.3 s of each other (`DOUBLE_WINDOW` in
+`src/experience.js`) is now one double throw:
+
+- The second ball's flight time is shortened so **both reach the lens in the same frame**.
+- The balls aim **either side of centre** (3 cm apart at the lens plane on each side,
+  slightly offset vertically) instead of converging on one point; the shift eases in over
+  0.08 s so the first ball does not jump.
+- **Lens effects are shared:** speed lines, radial blur and aberration are centred between
+  the two balls and use the stronger of the two; the impact flash and shockwave combine,
+  and the shake is half again as strong.
+- The throw sound's cooldown dropped from 0.5 s to 0.15 s, so a second throw just after
+  the first is no longer silent.
+
+Checked on the synthetic scene with the left hand 0.1 s behind the right
+(`?sim=1&hands=2&simoffset=0.1`): launches at 7.30 s and 7.40 s, both impacts at 7.93 s.
+Demo video: `captures/demo-double-throw.mp4`. Not yet tried with two real hands.
+
 ## 2026-11-12 — two-hand mode (demo)
 
 `2` (or **Two hands**) tracks two hands, each with its own ball.
@@ -24,8 +43,7 @@ Newest entry first. Each entry: what changed, what was checked and how, what is 
 - **Demo video** made from the app's own frames: `captures/demo-two-hands.mp4`. The dev
   server gained an opt-in `--captures` flag for this.
 
-Open: throwing both balls at the same instant shows only the first one's screen effects;
-the two thrown balls converge on the same point at the lens.
+Open: (resolved by the double throw, below the line above.)
 
 ## 2026-11-12 — Gyro's hat
 

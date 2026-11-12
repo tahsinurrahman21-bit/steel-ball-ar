@@ -31,6 +31,24 @@ function pickLead() {
   return exps[leadIdx];
 }
 
+// Both balls thrown together: the lens effects are shared and centred between them.
+function shareDouble() {
+  const [a, b] = exps;
+  const flying = (e) => e.double && (e.state === 'throw' || e.state === 'impact');
+  if (!flying(a) || !flying(b)) return;
+  const po = stage.postU, bg = stage.bgU;
+  const fx = (k) => Math.max(a.fx[k], b.fx[k]), imp = (k) => Math.max(a.imp[k], b.imp[k]);
+  if (a.state === 'throw' || b.state === 'throw') po.uCenter.value.set((a.sx + b.sx) / 2, (a.sy + b.sy) / 2);
+  po.uBlur.value = fx('blur'); po.uLines.value = fx('lines'); po.uVig.value = fx('vig');
+  po.uLinesInner.value = 0.16 + 0.5 * fx('blur');
+  po.uCA.value = fx('ca') + imp('ca');
+  po.uFlash.value = Math.min(1, imp('flash'));
+  po.uShockAmt.value = Math.min(1.5, a.imp.shockAmt + b.imp.shockAmt * 0.5);
+  const sh = imp('shake');
+  po.uShake.value.set((Math.random() - 0.5) * 0.03 * sh, (Math.random() - 0.5) * 0.03 * sh);
+  bg.uGrade.value = fx('grade'); bg.uGold.value = fx('gold'); bg.uBloom.value = fx('bloom');
+}
+
 // One spin voice: the loudest ball sets pitch and approach; a second spinning ball thickens it.
 function mixSpin() {
   const o = exps.map((e) => e.spinOut).sort((a, b) => b.level * (1 + b.approach) - a.level * (1 + a.approach));
@@ -58,6 +76,8 @@ async function start() {
     balls.push(b); exps.push(new Experience(stage, b, sound));
   }
   [ball] = balls; [exp] = exps;
+  exps[0].partner = exps[1]; exps[1].partner = exps[0];
+  if (source.sim && q.has('simoffset')) source.sim.offset = Number(q.get('simoffset'));
   await setHands(slots.count);
   stage.scene.add(hat.group);
   setHat(hat.on);
@@ -80,6 +100,7 @@ async function start() {
     const lead = pickLead();
     stage.bgU.uBloom2.value = 0;
     exps.forEach((e, i) => e.update(hands[i] ?? null, dt, now));
+    shareDouble();
     mixSpin();
     hat.update(head, stage.light, dt);
     stage.render();

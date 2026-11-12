@@ -55,19 +55,19 @@ export class SimHand {
     this.canvas.width = width; this.canvas.height = height;
     this.ctx = this.canvas.getContext('2d');
     this.videoWidth = width; this.videoHeight = height;
-    this.time = 0; this.hands = 1;
+    this.time = 0; this.hands = 1; this.offset = 1.6;   // seconds the left hand runs behind the right
   }
 
   // Returns a MediaPipe-like result for time t (seconds) and paints the stand-in frame.
-  // With hands = 2, a mirrored left hand runs the same script 1.6 s behind the right one,
-  // so the two balls are summoned and thrown at different moments.
+  // With hands = 2, a mirrored left hand runs the same script `offset` seconds behind the right
+  // one (1.6 s: separate summons and throws; ~0.1 s: a double throw).
   step(t) {
     this.time = t;
     const W = this.canvas.width, H = this.canvas.height, aspect = W / H;
     const tanH = Math.tan((CONFIG.hfovDeg * Math.PI) / 360);
     const pivot = [0.005, -0.06, 0];                      // centre the rotation on mid-palm so the hand turns in place
     const specs = this.hands > 1
-      ? [{ p: pose(t), side: 1, base: -0.13 }, { p: pose(t - 1.6), side: -1, base: 0.13 }]
+      ? [{ p: pose(t), side: 1, base: -0.13 }, { p: pose(t - this.offset), side: -1, base: 0.13 }]
       : [{ p: pose(t), side: 1, base: null }];
     const out = { landmarks: [], worldLandmarks: [], handednesses: [] }, drawn = [];
     for (const { p, side, base } of specs) {
