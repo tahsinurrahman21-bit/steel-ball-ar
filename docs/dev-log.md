@@ -2,6 +2,30 @@
 
 Newest entry first. Each entry: what changed, what was checked and how, what is still wrong.
 
+## 2026-11-12 — two-hand mode (demo)
+
+`2` (or **Two hands**) tracks two hands, each with its own ball.
+
+- **Tracking.** MediaPipe is switched to two hands at runtime. Each detected hand keeps its
+  slot from frame to frame (nearest to where that slot's hand was last seen); a new hand
+  takes the slot for its side, right hand first. Duplicate detections of one hand (MediaPipe
+  produced 6 in a 7 s one-hand clip) are dropped by box overlap, so they cannot summon a
+  ghost ball.
+- **Balls.** One ball and one state machine per hand. The ball doing the most (impact >
+  throw > summon > ready) drives the screen-wide effects; the other one lights the camera
+  image round its own hand. Spin sound is mixed into one voice: the louder ball sets the
+  pitch, the second thickens it. Finger stand-ins from both hands hide both balls.
+- **Checked** on the synthetic scene, which now has a mirrored left hand running 1.6 s
+  behind the right: both summon, spin together and throw independently; toggling on and
+  off mid-run works. On real footage, two-hand mode detects a single hand as well as
+  one-hand mode (39 of 46 frames vs 38). **Not checked with two real hands**: the only
+  two-hand reference clip shows hands wrapped round balls, which MediaPipe does not detect.
+- **Demo video** made from the app's own frames: `captures/demo-two-hands.mp4`. The dev
+  server gained an opt-in `--captures` flag for this.
+
+Open: throwing both balls at the same instant shows only the first one's screen effects;
+the two thrown balls converge on the same point at the lens.
+
 ## 2026-11-12 — Gyro's hat
 
 A **Hat** toggle (`G`) puts Gyro's hat on the tracked head.

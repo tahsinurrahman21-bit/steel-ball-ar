@@ -20,6 +20,9 @@ const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const backOut = (t) => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);
 
+// Which ball gets the screen when two are active: the one doing the most.
+export const STATE_RANK = { idle: 0, dissolve: 1, ready: 2, summon: 3, throw: 4, impact: 5 };
+
 export class Experience {
   constructor(stage, ball, sound) {
     this.stage = stage; this.ball = ball; this.sound = sound;
@@ -33,6 +36,9 @@ export class Experience {
     this.p0 = new THREE.Vector3(); this.pT = new THREE.Vector3(); this.tailFrom = new THREE.Vector3(); this.flightDir = new THREE.Vector3();
     this.T = 0.8; this.closedFor = 0; this.lostFor = 0; this.recentSpeed = 0; this.recentVel = [0, 0, 0];
     this.fired = {}; this.occlusion = true; this.throws = 0;
+    // With two balls, only the 'lead' one drives the screen-wide effects; the other lights its own hand.
+    // Each ball reports its spin sound here and the app mixes them into one voice.
+    this.lead = true; this.spinOut = { level: 0, rate: 0, pan: 0, approach: 0 };
     this._s = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
 
@@ -95,7 +101,7 @@ export class Experience {
         T.streak = S.streak * sm(0.6, 1, u); T.rings = sm(0.72, 1, u); T.halo = 0.2 + bell * 0.5; T.bloom = 0.25 + bell * 0.4;
         T.grade = 0.25 + bell * 0.6; T.ringAmt = sm(0, 0.2, u) * (1 - sm(0.8, 1, u)); T.shadow = 0.5 * this.appear; T.bounce = 0.4 + bell * 0.5;
         T.gold = bell * 0.45;
-        this.stage.bgU.uRingPhase.value = 1 - ((this.t * 1.15) % 1);                    // rings close in on the palm
+        if (this.lead) this.stage.bgU.uRingPhase.value = 1 - ((this.t * 1.15) % 1);                    // rings close in on the palm
         if (u < 0.7 && Math.random() < dt * 55) this.ball.spawn(0, 1, this.anchor, this.radius);
         if (u >= 0.78 && !this.fired.arrive) {
           this.fired.arrive = true; this.imp.flare = 0.9; this.imp.ca = 0.004; this.imp.flash = 0.12;
@@ -184,6 +190,9 @@ export class Experience {
     const cx = clamp(sc.x, -0.2, 1.2), cy = clamp(sc.y, -0.2, 1.2);
     bu.uScreen.value.set(cx, cy);
     const bg = this.stage.bgU, po = this.stage.postU;
+    const so = this.spinOut;
+    so.level = level * this.appear; so.rate = this.omega / (Math.PI * 2); so.pan = (cx - 0.5) * 1.5; so.approach = approach;
+    if (!this.lead) { bg.uPalm2.value.set(cx, cy); bg.uBloom2.value = Math.max(bg.uBloom2.value, fx.bloom); return; }
     if (this.state !== 'impact') { bg.uPalm.value.set(cx, cy); po.uCenter.value.set(cx, cy); }
     else { po.uCenter.value.lerp(new THREE.Vector2(0.5, 0.5), 0.3); }
     bg.uGrade.value = fx.grade; bg.uBloom.value = fx.bloom; bg.uGold.value = fx.gold; bg.uRingAmt.value = fx.ringAmt;
@@ -191,7 +200,5 @@ export class Experience {
     po.uLinesInner.value = 0.16 + 0.5 * fx.blur;
     po.uFlash.value = Math.min(1, imp.flash); po.uShock.value = imp.shock; po.uShockAmt.value = imp.shockAmt; po.uTime.value = time;
     po.uShake.value.set((Math.random() - 0.5) * 0.03 * imp.shake, (Math.random() - 0.5) * 0.03 * imp.shake);
-
-    this.sound.spin(level * this.appear, this.omega / (Math.PI * 2), (cx - 0.5) * 1.5, approach);
   }
 }

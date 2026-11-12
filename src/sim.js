@@ -55,30 +55,39 @@ export class SimHand {
     this.canvas.width = width; this.canvas.height = height;
     this.ctx = this.canvas.getContext('2d');
     this.videoWidth = width; this.videoHeight = height;
-    this.time = 0;
+    this.time = 0; this.hands = 1;
   }
 
   // Returns a MediaPipe-like result for time t (seconds) and paints the stand-in frame.
+  // With hands = 2, a mirrored left hand runs the same script 1.6 s behind the right one,
+  // so the two balls are summoned and thrown at different moments.
   step(t) {
     this.time = t;
-    const p = pose(t), W = this.canvas.width, H = this.canvas.height, aspect = W / H;
+    const W = this.canvas.width, H = this.canvas.height, aspect = W / H;
     const tanH = Math.tan((CONFIG.hfovDeg * Math.PI) / 360);
-    // centre the hand's rotation on mid-palm so it turns in place
-    const pivot = [0.005, -0.06, 0];
-    const world = OPEN.map((o, i) => {
-      const q = [0, 1, 2].map((k) => lerp(FIST[i][k], o[k], p.open) - pivot[k]);
-      return rot(q, p);
-    });
-    const cam = world.map((w) => [w[0] + p.x, w[1] - p.y, w[2] + p.z]);
-    const lm = cam.map((c) => ({ x: 0.5 + c[0] / (c[2] * 2 * tanH), y: 0.5 + (c[1] * aspect) / (c[2] * 2 * tanH), z: 0 }));
-    const cx = world.reduce((a, w) => a + w[0], 0) / 21, cy = world.reduce((a, w) => a + w[1], 0) / 21, cz = world.reduce((a, w) => a + w[2], 0) / 21;
-    this.paint(lm, cam, p);
-    if (!p.present) return { landmarks: [], worldLandmarks: [], handednesses: [] };
-    return {
-      landmarks: [lm],
-      worldLandmarks: [world.map((w) => ({ x: w[0] - cx, y: w[1] - cy, z: w[2] - cz }))],
-      handednesses: [[{ categoryName: 'Right', score: 0.98 }]],
-    };
+    const pivot = [0.005, -0.06, 0];                      // centre the rotation on mid-palm so the hand turns in place
+    const specs = this.hands > 1
+      ? [{ p: pose(t), side: 1, base: -0.13 }, { p: pose(t - 1.6), side: -1, base: 0.13 }]
+      : [{ p: pose(t), side: 1, base: null }];
+    const out = { landmarks: [], worldLandmarks: [], handednesses: [] }, drawn = [];
+    for (const { p, side, base } of specs) {
+      const x = base === null ? p.x : base + side * (p.x - 0.1);
+      const world = OPEN.map((o, i) => {
+        const r = rot([0, 1, 2].map((k) => lerp(FIST[i][k], o[k], p.open) - pivot[k]), p);
+        return [r[0] * side, r[1], r[2]];                 // side -1 mirrors a right hand into a left hand
+      });
+      const cam = world.map((w) => [w[0] + x, w[1] - p.y, w[2] + p.z]);
+      const lm = cam.map((c) => ({ x: 0.5 + c[0] / (c[2] * 2 * tanH), y: 0.5 + (c[1] * aspect) / (c[2] * 2 * tanH), z: 0 }));
+      if (!p.present) continue;
+      drawn.push({ lm, cam });
+      const cx = world.reduce((a, w) => a + w[0], 0) / 21, cy = world.reduce((a, w) => a + w[1], 0) / 21, cz = world.reduce((a, w) => a + w[2], 0) / 21;
+      out.landmarks.push(lm);
+      out.worldLandmarks.push(world.map((w) => ({ x: w[0] - cx, y: w[1] - cy, z: w[2] - cz })));
+      out.handednesses.push([{ categoryName: side > 0 ? 'Right' : 'Left', score: 0.98 }]);
+    }
+    this.paintRoom();
+    for (const d of drawn) this.paintHand(d.lm, d.cam);
+    return out;
   }
 
   // The four face landmarks the hat needs (top of forehead, chin, both cheek edges), matching the painted head.
@@ -89,7 +98,7 @@ export class SimHand {
     return { faceLandmarks: [f] };
   }
 
-  paint(lm, cam, p) {
+  paintRoom() {
     const g = this.ctx, W = this.canvas.width, H = this.canvas.height;
     // a plain "room": wall gradient, window light on the left, desk line
     const bg = g.createLinearGradient(0, 0, W, H);
@@ -101,7 +110,10 @@ export class SimHand {
     g.fillStyle = '#3a2f2a'; g.fillRect(0, H * 0.86, W, H * 0.14);
     g.fillStyle = '#243447'; g.beginPath(); g.ellipse(W * 0.5, H * 1.02, W * 0.2, H * 0.34, 0, 0, 7); g.fill(); // shoulders
     g.fillStyle = '#c99a7c'; g.beginPath(); g.ellipse(W * 0.5, H * 0.52, W * 0.075, H * 0.17, 0, 0, 7); g.fill();  // head
-    if (!p.present) return;
+  }
+
+  paintHand(lm, cam) {
+    const g = this.ctx, W = this.canvas.width, H = this.canvas.height;
     const P = (i) => [lm[i].x * W, lm[i].y * H];
     const px = (m) => (m / cam[9][2]) * (W / (2 * Math.tan((CONFIG.hfovDeg * Math.PI) / 360)));  // metres -> pixels at hand depth
     const skin = '#d9a585', shade = '#b98463';

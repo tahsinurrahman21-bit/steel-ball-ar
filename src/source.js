@@ -57,6 +57,13 @@ export class FrameSource {
     }
   }
 
+  // One or two hands. Changing it rebuilds MediaPipe's graph, which takes a moment.
+  async setNumHands(n) {
+    this.numHands = n;
+    if (this.sim) this.sim.hands = n;
+    if (this.landmarker) await this.landmarker.setOptions({ numHands: n });
+  }
+
   stop() {
     this._running = false;
     this.video?.srcObject?.getTracks().forEach((t) => t.stop());

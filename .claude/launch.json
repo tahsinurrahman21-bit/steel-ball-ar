@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["tools/serve.mjs", "5173"],
       "port": 5173
+    },
+    {
+      "name": "steel-ball-capture",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/serve.mjs", "5174", "--captures"],
+      "port": 5174
     }
   ]
 }

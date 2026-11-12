@@ -213,3 +213,59 @@ export function project(p, aspect) {
   const z = -p[2];
   return [0.5 + p[0] / (z * 2 * tanH), 0.5 - (p[1] * aspect) / (z * 2 * tanH)];
 }
+
+// Several hands at once. Each detected hand keeps its slot from frame to frame (the slot
+// whose hand was last seen nearest to it), so a ball stays with the hand that summoned it.
+// A newly seen hand goes to the slot for its side: slot 0 the right hand, slot 1 the left.
+export class HandSlots {
+  constructor(n = 2) {
+    this.trackers = Array.from({ length: n }, () => new HandTracker());
+    this.lastPos = new Array(n).fill(null); this.lastT = new Array(n).fill(-1e9);
+    this.count = 1;                                   // how many slots are in use
+  }
+
+  get mirror() { return this.trackers[0].mirror; }
+  set mirror(m) { for (const t of this.trackers) t.mirror = m; }
+  reset() { for (const t of this.trackers) t.reset(); this.lastPos.fill(null); }
+
+  update(result, t, aspect) {
+    const L = result?.landmarks ?? [], labels = result?.handednesses ?? result?.handedness ?? [];
+    let dets = L.map((lm, i) => {
+      let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+      for (const p of lm) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
+      return { i, x: (lm[0].x + lm[9].x) / 2, y: (lm[0].y + lm[9].y) / 2, box: [x0, y0, x1, y1], score: labels[i]?.[0]?.score ?? 0, label: labels[i]?.[0]?.categoryName ?? 'Right' };
+    });
+    // MediaPipe sometimes reports one hand twice; drop the weaker of two heavily overlapping detections
+    const iou = (a, b) => {
+      const w = Math.min(a[2], b[2]) - Math.max(a[0], b[0]), h = Math.min(a[3], b[3]) - Math.max(a[1], b[1]);
+      if (w <= 0 || h <= 0) return 0;
+      const inter = w * h, area = (r) => (r[2] - r[0]) * (r[3] - r[1]);
+      return inter / Math.min(area(a), area(b));
+    };
+    dets = dets.filter((d) => !dets.some((e) => e !== d && iou(d.box, e.box) > 0.5 && (e.score > d.score || (e.score === d.score && e.i < d.i))));
+    this.duplicates = L.length - dets.length;
+    const slotOf = new Array(this.trackers.length).fill(-1), used = new Set();
+    // 1. hands that were already being tracked stay in their slot
+    const pairs = [];
+    for (let s = 0; s < this.count; s++) {
+      const p = this.lastPos[s];
+      if (p && t - this.lastT[s] < 0.6) for (const d of dets) pairs.push([Math.hypot(d.x - p[0], (d.y - p[1]) / aspect), s, d.i]);
+    }
+    pairs.sort((a, b) => a[0] - b[0]);
+    for (const [dist, s, i] of pairs) if (dist < 0.25 && slotOf[s] < 0 && !used.has(i)) { slotOf[s] = i; used.add(i); }
+    // 2. new hands take the slot for their side if it is free, otherwise any free slot
+    for (const d of dets) {
+      if (used.has(d.i)) continue;
+      const pref = d.label === 'Left' ? 1 : 0;
+      const s = [pref, ...this.trackers.keys()].find((k) => k < this.count && slotOf[k] < 0);
+      if (s !== undefined) { slotOf[s] = d.i; used.add(d.i); }
+    }
+    return this.trackers.map((tr, s) => {
+      const i = slotOf[s];
+      if (i < 0) return tr.update(null, t, aspect);
+      const d = dets.find((e) => e.i === i);
+      this.lastPos[s] = [d.x, d.y]; this.lastT[s] = t;
+      return tr.update({ landmarks: [L[i]], worldLandmarks: [result.worldLandmarks[i]], handednesses: [labels[i] ?? []] }, t, aspect);
+    });
+  }
+}

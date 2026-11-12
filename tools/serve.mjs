@@ -1,12 +1,14 @@
 // Zero-dependency static server for local development.
 // Usage: node tools/serve.mjs [port]
 import { createServer } from 'node:http';
-import { createReadStream, statSync } from 'node:fs';
+import { createReadStream, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const port = Number(process.argv[2] || process.env.PORT || 5173);
+// --captures: accept POST /__capture/<name>.jpg|png and save it under captures/ (for demo videos)
+const captures = process.argv.includes('--captures');
 const types = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -17,6 +19,18 @@ const types = {
 };
 
 createServer((req, res) => {
+  if (captures && req.method === 'POST' && req.url.startsWith('/__capture/')) {
+    const name = req.url.slice('/__capture/'.length);
+    if (!/^[\w-]{1,48}\.(jpg|png)$/.test(name)) { res.writeHead(400).end('bad name'); return; }
+    const chunks = []; let size = 0;
+    req.on('data', (c) => { size += c.length; if (size > 8e6) req.destroy(); else chunks.push(c); });
+    req.on('end', () => {
+      mkdirSync(join(root, 'captures'), { recursive: true });
+      writeFileSync(join(root, 'captures', name), Buffer.concat(chunks));
+      res.writeHead(204).end();
+    });
+    return;
+  }
   let path;
   try { path = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { path = '/'; }
   let file = normalize(join(root, path));
@@ -42,5 +56,5 @@ createServer((req, res) => {
     createReadStream(file).pipe(res);
   }
 }).listen(port, '127.0.0.1', () => {
-  console.log(`Steel Ball AR  ->  http://localhost:${port}/`);
+  console.log(`Steel Ball AR  ->  http://localhost:${port}/${captures ? '  (frame capture on)' : ''}`);
 });

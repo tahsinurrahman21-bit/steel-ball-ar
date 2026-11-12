@@ -14,7 +14,8 @@ const FS_VERT = /* glsl */`varying vec2 vUv; void main(){ vUv = uv; gl_Position 
 const BG_FRAG = /* glsl */`
 precision highp float;
 uniform sampler2D uVideo; uniform float uMirror, uAspect, uGrade, uBloom, uRingAmt, uRingPhase, uGold;
-uniform vec2 uPalm;
+uniform vec2 uPalm, uPalm2;      // uPalm2: a second ball's hand (two-hand mode)
+uniform float uBloom2;
 varying vec2 vUv;
 void main(){
   vec2 uv = vUv;
@@ -40,6 +41,9 @@ void main(){
   vec3 tint = mix(vec3(0.42, 1.0, 0.36), vec3(1.0, 0.80, 0.30), uGold);
   // (screen-style blend: it can brighten but never clip the picture to white)
   vec3 light = tint*(near*0.26 + wide*0.07)*uBloom*(0.35 + 0.65*l);
+  vec2 e2 = (vUv - uPalm2)*vec2(uAspect, 1.);
+  float q2 = dot(e2, e2);
+  light += vec3(0.42, 1.0, 0.36)*(exp(-q2*9.)*0.26 + exp(-q2*1.7)*0.07)*uBloom2*(0.35 + 0.65*l);
   c += light*(1. - c);
   c += ripple*(tint*0.16 + 0.06)*(1. - c);
   gl_FragColor = vec4(c, 1.);
@@ -113,7 +117,7 @@ export class Stage {
     tri.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]), 3));
     tri.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 2, 0, 0, 2]), 2));
     const U = (v) => ({ value: v });
-    this.bgU = { uVideo: U(this.videoTex), uMirror: U(1), uAspect: U(16 / 9), uGrade: U(0), uBloom: U(0), uRingAmt: U(0), uRingPhase: U(0), uGold: U(0), uPalm: U(new THREE.Vector2(0.5, 0.5)) };
+    this.bgU = { uVideo: U(this.videoTex), uMirror: U(1), uAspect: U(16 / 9), uGrade: U(0), uBloom: U(0), uRingAmt: U(0), uRingPhase: U(0), uGold: U(0), uPalm: U(new THREE.Vector2(0.5, 0.5)), uPalm2: U(new THREE.Vector2(0.5, 0.5)), uBloom2: U(0) };
     this.postU = { uScene: U(null), uCenter: U(new THREE.Vector2(0.5, 0.5)), uShake: U(new THREE.Vector2()), uFlashCol: U(new THREE.Vector3(1, 0.97, 0.85)), uAspect: U(16 / 9), uCA: U(0), uBlur: U(0), uFlash: U(0), uLines: U(0), uLinesInner: U(0.2), uShock: U(0), uShockAmt: U(0), uTime: U(0), uVig: U(0) };
     const fs = (frag, uniforms) => { const m = new THREE.Mesh(tri, new THREE.ShaderMaterial({ vertexShader: FS_VERT, fragmentShader: frag, uniforms, depthTest: false, depthWrite: false })); m.frustumCulled = false; const s = new THREE.Scene(); s.add(m); return s; };
     this.bgScene = fs(BG_FRAG, this.bgU); this.postScene = fs(POST_FRAG, this.postU);

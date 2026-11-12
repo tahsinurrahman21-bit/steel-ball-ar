@@ -4,3 +4,4 @@ test-media/
 assets/models/original/*
 !assets/models/original/.gitkeep
 *.log
+captures/
