@@ -43,7 +43,8 @@ Demo video: `captures/demo-double-throw.mp4`. Not yet tried with two real hands.
 - **Demo video** made from the app's own frames: `captures/demo-two-hands.mp4`. The dev
   server gained an opt-in `--captures` flag for this.
 
-Open: (resolved by the double throw, below the line above.)
+Open at the time: a simultaneous throw showed only the first ball's screen effects, and both
+balls converged on one point. Both are fixed by the double throw (entry above).
 
 ## 2026-11-12 — Gyro's hat
 
