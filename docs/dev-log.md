@@ -2,6 +2,17 @@
 
 Newest entry first. Each entry: what changed, what was checked and how, what is still wrong.
 
+## 2026-11-12 — hat detail
+
+- **Goggles** rebuilt after the ArtStation model: rounded metal housings, a dark rounded lens
+  set into each, and two shutter bars across it. They were plain boxes before.
+- **Brim shadow on the face:** a shell just outside the head stand-in multiplies the camera
+  image darker from the brim line down over the forehead and eyes, stronger when the room
+  light comes from above. The first version darkened a strip of background beside the
+  face (the stand-in is wider than a real head); it now fades out before the shell's edge.
+- Checked on the real-face clip, with and without the shadow (`captures/hat3-compare.jpg`).
+  Not checked on your webcam.
+
 ## 2026-11-12 — SBR look and sound bank (from `videos/special`)
 
 New reference: a 77 s, 60 fps montage of the anime's Spin scenes. Both new versions sit

@@ -7,6 +7,7 @@
 //     image shows through them)
 //   - a strap round the base of the crown carrying two slotted goggles at the front
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from '/node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { CONFIG, OneEuro } from './tracking.js';
 
 THREE.ColorManagement.enabled = false;   // colours below are display values, used as written (see stage.js)
@@ -139,17 +140,27 @@ export class GyroHat {
     const band = new THREE.Mesh(new THREE.CylinderGeometry(RC * 1.02, RC * 1.02, 0.02, 64, 1, true), mat(strap, 0x3a3f45, 0));
     band.position.y = 0.014; this.hat.add(band);
 
-    // goggles: two slotted lenses on the strap at the front, a bridge between them, a knob at the side
-    const gMat = mat(metal, lens, 3), plain = mat(metal, lens, 0);
+    // goggles (after the ArtStation model): a rounded metal housing on each side of the front,
+    // a dark lens set into it, and two shutter bars across the lens
+    const plain = mat(metal, lens, 0), dark = mat(lens, lens, 0), bars = mat(0xc4cad0, lens, 0);
+    const lensShape = new THREE.Shape(), w = 0.0195, h = 0.0125, rr = 0.005;
+    lensShape.moveTo(-w + rr, -h); lensShape.lineTo(w - rr, -h); lensShape.quadraticCurveTo(w, -h, w, -h + rr);
+    lensShape.lineTo(w, h - rr); lensShape.quadraticCurveTo(w, h, w - rr, h); lensShape.lineTo(-w + rr, h);
+    lensShape.quadraticCurveTo(-w, h, -w, h - rr); lensShape.lineTo(-w, -h + rr); lensShape.quadraticCurveTo(-w, -h, -w + rr, -h);
     for (const s of [-1, 1]) {
-      const g = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.034, 0.02), gMat);
-      g.position.set(s * 0.031, 0.028, RC - 0.001); g.rotation.set(-0.08, s * 0.34, 0);
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.034, 0.016, 3, 0.006), plain));
+      const lensM = new THREE.Mesh(new THREE.ShapeGeometry(lensShape, 6), dark); lensM.position.z = 0.0081; g.add(lensM);
+      for (const y of [-0.0042, 0.0042]) {
+        const b = new THREE.Mesh(new RoundedBoxGeometry(0.041, 0.0034, 0.003, 2, 0.0012), bars); b.position.set(0, y, 0.0085); g.add(b);
+      }
+      g.position.set(s * 0.031, 0.028, RC + 0.001); g.rotation.set(-0.08, s * 0.34, 0);
       this.hat.add(g);
       const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.012, 20), plain);
       knob.position.set(s * (RC + 0.004), 0.016, 0.03); knob.rotation.z = Math.PI / 2; this.hat.add(knob);
     }
-    const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.012, 0.012), plain);
-    bridge.position.set(0, 0.028, RC + 0.006); this.hat.add(bridge);
+    const bridge = new THREE.Mesh(new RoundedBoxGeometry(0.014, 0.012, 0.012, 2, 0.003), plain);
+    bridge.position.set(0, 0.028, RC + 0.005); this.hat.add(bridge);
 
     this.hat.scale.set(1, 1, 1.13);                                 // heads are longer front to back than side to side
     this.hat.rotation.x = -0.1;                                     // worn tipped slightly back
@@ -157,7 +168,27 @@ export class GyroHat {
     // depth-only stand-in for the head, so the far side of the brim hides behind the face
     this.head = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial({ colorWrite: false }));
     this.head.scale.set(0.074, 0.105, 0.09); this.head.renderOrder = 1; this.group.add(this.head);
-    for (const o of this.hat.children) o.renderOrder = 3;
+    this.hat.traverse((o) => { if (o.isMesh) o.renderOrder = 3; });
+
+    // the brim's shadow on the face: a shell just outside the head stand-in that darkens the
+    // camera image (multiply) from the brim line down over the forehead and eyes
+    this.shadowU = { uBrimY: { value: 0 }, uAmt: { value: 0 }, uSy: { value: 0.105 * 1.03 }, uOffY: { value: -0.012 } };
+    this.faceShadow = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), new THREE.ShaderMaterial({
+      uniforms: this.shadowU, transparent: true, depthWrite: false,
+      blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.ZeroFactor, blendDst: THREE.SrcColorFactor,
+      vertexShader: /* glsl */`uniform float uSy, uOffY; varying float vY; varying float vFront; varying vec3 vN; varying vec3 vV;
+        void main(){ vY = position.y*uSy + uOffY; vFront = position.z; vN = normalize(normalMatrix*normal); vec4 mv = modelViewMatrix*vec4(position, 1.); vV = -mv.xyz; gl_Position = projectionMatrix*mv; }`,
+      fragmentShader: /* glsl */`precision highp float; uniform float uBrimY, uAmt; varying float vY; varying float vFront; varying vec3 vN; varying vec3 vV;
+        void main(){
+          float d = uBrimY - vY;                                   // metres below the brim
+          float s = smoothstep(-0.004, 0.01, d)*(1. - smoothstep(0.035, 0.085, d))*smoothstep(-0.1, 0.45, vFront)*uAmt;
+          s *= smoothstep(0.3, 0.7, max(dot(normalize(vN), normalize(vV)), 0.));   // fade before the stand-in's edge: it is wider than a real face
+          gl_FragColor = vec4(mix(vec3(1.), vec3(0.52, 0.47, 0.45), s), 1.);
+        }`,
+    }));
+    this.faceShadow.scale.set(0.074 * 1.03, 0.105 * 1.03, 0.09 * 1.03); this.faceShadow.position.y = -0.012;
+    this.faceShadow.renderOrder = 2; this.group.add(this.faceShadow);
+    this.shadowOn = true;
 
     this.on = false; this.amount = 0;                               // 0..1 pop-in
     // user fit: overall size, extra height and forward shift (metres), extra backward tilt (radians)
@@ -178,6 +209,9 @@ export class GyroHat {
     this.hat.position.set(0, head.forehead * 0.86 + this.height + (1 - k) * 0.06, 0.004 + this.depth);
     this.hat.rotation.x = -0.1 - this.tilt;
     this.hat.scale.set(this.size * pop, this.size * pop, this.size * 1.13 * pop);
+    // brim line over the face: the brim sits ~5 mm below the crown base and the hat tips back
+    this.shadowU.uBrimY.value = this.hat.position.y + (-0.005 + Math.sin(0.1 + this.tilt) * 0.1) * this.size;
+    this.shadowU.uAmt.value = this.shadowOn ? k * 0.55 * (0.55 + 0.45 * Math.max(0, light.dir.y)) : 0;
     for (const m of this.mats) { m.uniforms.uLightDir.value.copy(light.dir); m.uniforms.uExposure.value = Math.min(1.08, 0.72 + light.exposure * 0.3); m.uniforms.uAlpha.value = Math.min(1, k * 1.6); }
   }
 }
