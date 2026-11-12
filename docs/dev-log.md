@@ -18,8 +18,9 @@ Newest entry first. Each entry: what changed, what was checked and how, what is 
 - **Checked** on the synthetic scene, which now has a mirrored left hand running 1.6 s
   behind the right: both summon, spin together and throw independently; toggling on and
   off mid-run works. On real footage, two-hand mode detects a single hand as well as
-  one-hand mode (39 of 46 frames vs 38). **Not checked with two real hands**: the only
-  two-hand reference clip shows hands wrapped round balls, which MediaPipe does not detect.
+  one-hand mode (39 of 46 frames vs 38). The only two-hand reference clip shows hands
+  wrapped round balls, which MediaPipe does not detect.
+- **Confirmed by you on the live webcam:** both hands are tracked.
 - **Demo video** made from the app's own frames: `captures/demo-two-hands.mp4`. The dev
   server gained an opt-in `--captures` flag for this.
 
