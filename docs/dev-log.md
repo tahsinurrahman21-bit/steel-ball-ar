@@ -36,9 +36,9 @@ is the one kept. Compared side by side with `InShot @ 24.84, 25.48` in
   the SBR activation swells a 626 Hz tone while the loop fades in.
 - Materialise, impact and dissolve stay synthesised: the montage has no clean version.
 
-**Not verified:** I cannot hear, so none of the SBR sounds has been listened to. The loop's
-pulse, partials and seam, the roar's lack of tonal lines, and the bank switching were
-checked by measurement. The extracted audio is not committed (it is cut from the anime,
+**Checked:** the loop's pulse, partials and seam, the roar's lack of tonal lines, and the
+bank switching were checked by measurement (I cannot hear). **Confirmed by you by ear:**
+the SBR sounds sound right. The extracted audio is not committed (it is cut from the anime,
 like the videos it comes from).
 
 ## 2026-11-12 — double throw
