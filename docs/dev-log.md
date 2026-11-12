@@ -19,7 +19,8 @@ Throwing with both hands within 0.3 s of each other (`DOUBLE_WINDOW` in
 
 Checked on the synthetic scene with the left hand 0.1 s behind the right
 (`?sim=1&hands=2&simoffset=0.1`): launches at 7.30 s and 7.40 s, both impacts at 7.93 s.
-Demo video: `captures/demo-double-throw.mp4`. Not yet tried with two real hands.
+Demo video: `captures/demo-double-throw.mp4`. **Confirmed by you on the live webcam:**
+the double throw triggers with two real hands.
 
 ## 2026-11-12 — two-hand mode (demo)
 
