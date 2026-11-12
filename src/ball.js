@@ -2,6 +2,7 @@
 // comet tail, star flare, sparks, and depth-only stand-ins for the fingers (occlusion).
 import * as THREE from 'three';
 import { classicFrag } from './ball-classic.js';
+import { sbrFrag } from './ball-sbr.js';
 
 const PREMULT = { blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor };
 
@@ -203,45 +204,58 @@ export class SteelBall {
       uRotInv: U(new THREE.Matrix3()), uAxis: U(new THREE.Vector3(0, 1, 0)), uBlurArc: U(0), uStreak: U(0), uStep: U(0),
       uAppear: U(0), uToon: U(0.45), uGlow: U(0), uRadius: U(0.035), uEnv: U(envTexture), uScreen: U(new THREE.Vector2(0.5, 0.5)),
       uMirror: U(1), uLightDir: U(new THREE.Vector3(-0.4, 0.7, 0.6).normalize()), uLightCol: U(new THREE.Vector3(1, 1, 1)), uExposure: U(1),
-      uWobbleAxis: U(new THREE.Vector3(0, 1, 0)), uWobble: U(0),
+      uWobbleAxis: U(new THREE.Vector3(0, 1, 0)), uWobble: U(0), uTwist: U(0),
     };
     // two looks share one set of uniforms; setLook() swaps between them
     const ballMat = (fragmentShader) => new THREE.ShaderMaterial({ vertexShader: BALL_VERT, fragmentShader, uniforms: this.u, transparent: true });
-    this.looks = { new: ballMat(BALL_FRAG), classic: ballMat(classicFrag(NOISE)) };
+    this.looks = { new: ballMat(BALL_FRAG), classic: ballMat(classicFrag(NOISE)), sbr: ballMat(sbrFrag(NOISE)) };
+    this.lookName = 'new';
     this.mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), this.looks.new);
     this.mesh.renderOrder = 10;
     this.group.add(this.mesh);
 
     // ---- halo behind the ball
-    this.haloU = { uAmt: U(0), uGold: U(0) };
+    this.haloU = { uAmt: U(0), uGold: U(0), uAura: U(0), uTime: U(0) };
     this.halo = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), fxMaterial(/* glsl */`
-      uniform float uAmt, uGold;
+      uniform float uAmt, uGold, uAura, uTime;
       void main(){
         float r = length(vUv);
         float g = exp(-r*r*6.5)*0.5 + exp(-r*r*2.2)*0.12;
         vec3 c = mix(vec3(0.45, 1.0, 0.35), vec3(1.0, 0.8, 0.25), uGold);
-        gl_FragColor = vec4(c*g*uAmt*(1. - smoothstep(0.85, 1., r)), 0.);
+        vec3 col = c*g*uAmt;
+        // sbr look: a flickering flame-edged gold aura hugging the ball (the ball is 1/4.2 of this quad)
+        float ang = atan(vUv.y, vUv.x), rb = 0.238;
+        float flick = vnoise(vec2(ang*5., uTime*14.))*0.55 + vnoise(vec2(ang*13. + 3., uTime*23.))*0.45;
+        float outer = rb*(1.1 + 0.55*flick*flick);
+        float flame = (1. - smoothstep(rb*0.97, outer, r))*smoothstep(rb*0.85, rb*0.97, r);
+        vec3 fc = mix(vec3(1.0, 0.93, 0.55), vec3(1.0, 0.45, 0.03), smoothstep(rb, outer, r));
+        col += fc*flame*uAura*2.0 + vec3(1.0, 0.62, 0.1)*exp(-pow((r - rb)/0.14, 2.))*uAura*0.55;
+        gl_FragColor = vec4(col*(1. - smoothstep(0.85, 1., r)), 0.);
       }`, this.haloU, { depthTest: false }));
     this.halo.renderOrder = 5;
     this.group.add(this.halo);
 
     // ---- orbit rings
     this.rings = [];
-    for (let i = 0; i < 3; i++) {
-      const u = { uAmt: U(0), uPhase: U(Math.random() * 6.28), uSeed: U(i * 3.1 + 1), uArcs: U(2 + (i % 2)) };
+    const SBR_H = [-0.6, -0.18, 0.22, 0.62, -0.93];                // sbr look: five rings, one hugging the bottom
+    for (let i = 0; i < 5; i++) {
+      const u = { uAmt: U(0), uPhase: U(Math.random() * 6.28), uSeed: U(i * 3.1 + 1), uArcs: U(2 + (i % 2)), uSbr: U(0) };
       const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), fxMaterial(/* glsl */`
-        uniform float uAmt, uPhase, uSeed, uArcs;
+        uniform float uAmt, uPhase, uSeed, uArcs, uSbr;
         void main(){
           float r = length(vUv), ang = atan(vUv.y, vUv.x);
           float s = fract((ang + uPhase)/6.2831853*uArcs);
           float arc = smoothstep(0.0, 0.5, s)*(1. - smoothstep(0.62, 0.7, s));      // tapered tail, sharp head
           float wob = 0.012*sin(ang*3. + uSeed);
-          float line = 1. - smoothstep(0.0, 0.05*(0.3 + arc), abs(r - 0.86 - wob));
-          float a = min(1., line*arc*1.2)*uAmt;
-          gl_FragColor = vec4(mix(vec3(0.50, 0.56, 0.92), vec3(1.0), smoothstep(0.25, 0.8, line))*a, a);
+          float wid = mix(0.05, 0.085, uSbr)*(0.3 + arc), d = r - 0.86 - wob;
+          float line = 1. - smoothstep(0.0, wid, abs(d));
+          float a = min(1., line*arc*mix(1.2, 1.6, uSbr))*uAmt;
+          vec3 cOld = mix(vec3(0.50, 0.56, 0.92), vec3(1.0), smoothstep(0.25, 0.8, line));
+          vec3 cSbr = mix(vec3(1.0), vec3(0.62, 0.62, 0.92), clamp(smoothstep(-0.2*wid, wid, d)*1.3, 0., 1.));   // white stroke, lavender outer edge
+          gl_FragColor = vec4(mix(cOld, cSbr, uSbr)*a, a);
         }`, u, { depthTest: true }));
       m.renderOrder = 12;
-      this.group.add(m); this.rings.push({ mesh: m, u, tilt: new THREE.Quaternion(), height: (i - 1) * 0.42, speed: 13 + i * 4 });
+      this.group.add(m); this.rings.push({ mesh: m, u, tilt: new THREE.Quaternion(), height: (i - 1) * 0.42, hSbr: SBR_H[i], speed: 13 + i * 4 });
     }
 
     // ---- contact shadow + green bounce light on the palm
@@ -258,14 +272,14 @@ export class SteelBall {
     this.group.add(this.shadow);
 
     // ---- comet tail (thrown ball)
-    this.tailU = { uAmt: U(0), uTime: U(0) };
+    this.tailU = { uAmt: U(0), uTime: U(0), uSbr: U(0) };
     const cone = new THREE.CylinderGeometry(1, 0.03, 1, 40, 1, true);
     cone.translate(0, -0.5, 0);                                    // wide end at the origin, tip at -Y
     this.tail = new THREE.Mesh(cone, new THREE.ShaderMaterial({
       uniforms: this.tailU, transparent: true, depthWrite: false, side: THREE.DoubleSide, ...PREMULT,
       vertexShader: /* glsl */`varying vec2 vUv; varying vec3 vN; varying vec3 vP;
         void main(){ vUv = uv; vN = normalize(normalMatrix*normal); vec4 mv = modelViewMatrix*vec4(position, 1.); vP = mv.xyz; gl_Position = projectionMatrix*mv; }`,
-      fragmentShader: /* glsl */`precision highp float; uniform float uAmt, uTime; varying vec2 vUv; varying vec3 vN; varying vec3 vP;
+      fragmentShader: /* glsl */`precision highp float; uniform float uAmt, uTime, uSbr; varying vec2 vUv; varying vec3 vN; varying vec3 vP;
         ${NOISE}
         void main(){
           float along = vUv.y;                                      // 1 at the ball, 0 at the tip
@@ -273,6 +287,10 @@ export class SteelBall {
           float facing = abs(dot(normalize(vN), normalize(-vP)));
           float a = pow(along, 1.6)*streak*(0.35 + 0.65*facing)*uAmt;
           vec3 c = mix(vec3(1.0, 0.55, 0.08), vec3(1.0, 0.95, 0.6), along);
+          // sbr look: solid orange flame with a yellow core and torn edges
+          float torn = smoothstep(0.3, 0.42, vnoise(vec2(vUv.x*22., along*7. - uTime*15.)) + along*0.45);
+          c = mix(c, mix(vec3(1.0, 0.48, 0.02), vec3(1.0, 0.9, 0.4), smoothstep(0.35, 1., along)*facing), uSbr);
+          a *= mix(1., torn*1.6, uSbr);
           gl_FragColor = vec4(c*a*0.9, 0.);
         }`,
     }));
@@ -302,11 +320,13 @@ export class SteelBall {
     pg.setAttribute('position', new THREE.BufferAttribute(this.pPos, 3));
     pg.setAttribute('aInfo', new THREE.BufferAttribute(this.pAttr, 2));
     this.points = new THREE.Points(pg, new THREE.ShaderMaterial({
-      transparent: true, depthWrite: false, ...PREMULT, uniforms: { uSize: U(1) },
+      transparent: true, depthWrite: false, ...PREMULT, uniforms: { uSize: U(1), uStar: U(0) },
       vertexShader: /* glsl */`attribute vec2 aInfo; uniform float uSize; varying vec2 vInfo;
         void main(){ vInfo = aInfo; vec4 mv = modelViewMatrix*vec4(position, 1.); gl_Position = projectionMatrix*mv; gl_PointSize = uSize*(0.5 + aInfo.x)/max(0.05, -mv.z); }`,
-      fragmentShader: /* glsl */`precision highp float; varying vec2 vInfo;
-        void main(){ vec2 p = gl_PointCoord*2. - 1.; float r = dot(p, p); float a = exp(-r*4.5)*vInfo.x;
+      fragmentShader: /* glsl */`precision highp float; uniform float uStar; varying vec2 vInfo;
+        void main(){ vec2 p = gl_PointCoord*2. - 1.; float r = dot(p, p);
+          float star = max(exp(-abs(p.x)*14.)*exp(-abs(p.y)*2.2), exp(-abs(p.y)*14.)*exp(-abs(p.x)*2.2)) + exp(-r*18.);
+          float a = mix(exp(-r*4.5), star, uStar)*vInfo.x;
           vec3 c = mix(vec3(0.6, 1.0, 0.5), vec3(1.0, 0.85, 0.35), vInfo.y); gl_FragColor = vec4(c*a, 0.); }`,
     }));
     this.points.frustumCulled = false; this.points.renderOrder = 15;
@@ -332,7 +352,14 @@ export class SteelBall {
     this._m4 = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._v = new THREE.Vector3(); this._v2 = new THREE.Vector3();
   }
 
-  setLook(name) { this.mesh.material = this.looks[name] ?? this.looks.new; }
+  setLook(name) {
+    this.lookName = this.looks[name] ? name : 'new';
+    this.mesh.material = this.looks[this.lookName];
+    const sbr = this.lookName === 'sbr' ? 1 : 0;
+    for (const r of this.rings) r.u.uSbr.value = sbr;
+    this.tailU.uSbr.value = sbr;
+    this.points.material.uniforms.uStar.value = sbr; this.points.material.uniforms.uSize.value = sbr ? 5 : 1;
+  }
 
   setOcclusion(on, showProxy = false) {
     for (const m of this.occluders) { m.visible = on; m.material.colorWrite = showProxy; m.material.color?.set(0xff3df2); m.material.transparent = showProxy; m.material.opacity = 0.45; }
@@ -390,7 +417,10 @@ export class SteelBall {
     this.mesh.visible = p.appear > 0.001;
 
     this.halo.position.copy(this.center); this.halo.scale.setScalar(p.radius * 4.2);
-    this.haloU.uAmt.value = p.halo; this.haloU.uGold.value = p.gold; this.halo.visible = p.halo > 0.002;
+    const aura = this.lookName === 'sbr' ? Math.min(1, (p.glow ?? 0) * 1.25) * (p.appear > 0.5 ? 1 : 0) : 0;
+    this.haloU.uAmt.value = p.halo; this.haloU.uGold.value = p.gold; this.haloU.uAura.value = aura; this.haloU.uTime.value = p.time;
+    this.halo.visible = p.halo > 0.002 || aura > 0.01;
+    this.u.uTwist.value = p.twist ?? 0;
 
     // rings: stacked along the axis, hugging the sphere, each slightly tilted and re-tilted every few steps
     const qAxis = this._q.setFromUnitVectors(this._v.set(0, 0, 1), this.axis).clone();
@@ -398,13 +428,15 @@ export class SteelBall {
       const s2 = Math.floor(p.time * 6) + i * 17;
       r.tilt.setFromEuler(new THREE.Euler((h(s2) - 0.5) * 0.34, (h(s2 + 5) - 0.5) * 0.34, 0));
       r.mesh.quaternion.copy(qAxis).multiply(r.tilt);
-      const hh = r.height + (h(s2 + 9) - 0.5) * 0.18;
+      const sbr = this.lookName === 'sbr';
+      const hh = (sbr ? r.hSbr : r.height) + (h(s2 + 9) - 0.5) * (sbr ? 0.1 : 0.18);
       r.mesh.position.copy(this.center).addScaledVector(this.axis, hh * p.radius);
-      const ringR = (Math.sqrt(Math.max(0.05, 1 - hh * hh)) * 1.28 + 0.12) * p.ringScale;
+      const ringR = (Math.sqrt(Math.max(0.05, 1 - hh * hh)) * (sbr ? 1.1 : 1.28) + (sbr ? 0.1 : 0.12)) * p.ringScale;   // sbr rings hug the ball
       r.mesh.scale.setScalar((p.radius * ringR) / 0.86);
       r.u.uPhase.value -= r.speed * dt * (0.6 + p.omega / 40);
-      r.u.uAmt.value = p.rings * (0.65 + 0.35 * h(s2 + 2));
-      r.mesh.visible = p.rings > 0.01;
+      const on = i < 3 || sbr;
+      r.u.uAmt.value = on ? p.rings * (0.65 + 0.35 * h(s2 + 2)) : 0;
+      r.mesh.visible = on && p.rings > 0.01;
     });
 
     if (p.palm && (p.shadow > 0.005 || p.bounce > 0.005)) {

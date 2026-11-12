@@ -3,10 +3,17 @@
 // partials near 376 / 493 / 625 Hz; activation is a wide noise burst over a falling thump;
 // the throw is a rising whoosh. If you add your own files (see assets/audio/README.md) they
 // are used instead of the synthesised version for that event.
+//
+// Two sound banks:
+//   synth  the above
+//   sbr    sounds lifted from the Spin montage (videos/special): the real pulsed tone, isolated
+//          from the mix (assets/audio/sbr/spin_loop.wav), the gold-comet roar with the music
+//          removed (throw.wav), and the activation shimmer (activate.wav). The tone's measured
+//          onset is kept: its 626 Hz partial sounds first, then the 848 Hz tone takes over.
 const SAMPLE_NAMES = ['activate', 'materialize', 'spin_loop', 'throw', 'impact'];
 
 export class Sound {
-  constructor() { this.ctx = null; this.muted = false; this.samples = {}; this.last = {}; this.spinOn = false; }
+  constructor() { this.ctx = null; this.muted = false; this.samples = {}; this.sbr = {}; this.bank = 'synth'; this.last = {}; this.spinOn = false; this.roar = null; }
 
   async init() {
     if (this.ctx) return;
@@ -40,10 +47,14 @@ export class Sound {
     this.flutterLfo = ctx.createOscillator(); this.flutterLfo.frequency.value = 6;
     const fd = ctx.createGain(); fd.gain.value = 0.035;
     this.flutterLfo.connect(fd).connect(flutter.gain); this.flutterLfo.start();
-    n.connect(this.whirrBP).connect(flutter).connect(g); n.start();
-    trem.connect(g); g.connect(this.pan);
+    // the two banks' spin voices run side by side; setBank() crossfades between them
+    this.synthBus = ctx.createGain(); this.synthBus.gain.value = this.bank === 'synth' ? 1 : 0;
+    this.sbrBus = ctx.createGain(); this.sbrBus.gain.value = this.bank === 'sbr' ? 1 : 0;
+    n.connect(this.whirrBP).connect(flutter).connect(this.synthBus); n.start();
+    trem.connect(this.synthBus); this.synthBus.connect(g); this.sbrBus.connect(g); g.connect(this.pan);
 
     await this._loadSamples();
+    await this._loadSbr();
   }
 
   async _loadSamples() {
@@ -61,6 +72,30 @@ export class Sound {
       this.trem.disconnect(); this.lfoDepth.gain.value = 0;
       const lg = this.ctx.createGain(); lg.gain.value = 0.9; s.connect(lg).connect(this.spinGain); s.start();
     }
+  }
+
+  async _loadSbr() {
+    for (const name of ['spin_loop', 'throw', 'activate']) {
+      try { this.sbr[name] = await this.ctx.decodeAudioData(await (await fetch(`/assets/audio/sbr/${name}.wav`)).arrayBuffer()); }
+      catch (e) { console.warn(`audio: sbr ${name} missing`, e); }
+    }
+    if (this.sbr.spin_loop) {
+      const s = this.sbrLoop = this.ctx.createBufferSource(); s.buffer = this.sbr.spin_loop; s.loop = true;
+      const lg = this.ctx.createGain(); lg.gain.value = 1.15; s.connect(lg).connect(this.sbrBus); s.start();
+    }
+  }
+
+  setBank(name) {
+    this.bank = name === 'sbr' ? 'sbr' : 'synth';
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime, sbr = this.bank === 'sbr';
+    this.synthBus.gain.setTargetAtTime(sbr ? 0 : 1, t, 0.05); this.sbrBus.gain.setTargetAtTime(sbr ? 1 : 0, t, 0.05);
+  }
+
+  _play(buf, gain = 1, when = 0) {
+    const s = this.ctx.createBufferSource(); s.buffer = buf;
+    const g = this.ctx.createGain(); g.gain.value = gain; s.connect(g).connect(this.pan); s.start(this.ctx.currentTime + when);
+    return { s, g };
   }
 
   setMuted(m) { this.muted = m; if (this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.03); }
@@ -98,6 +133,16 @@ export class Sound {
     if (!this.ctx || !this._cool('activate', 0.8)) return;
     if (this._sample('activate', 0.8)) return;
     const t = this.ctx.currentTime;
+    if (this.bank === 'sbr') {
+      if (this.sbr.activate) this._play(this.sbr.activate, 0.9);
+      // the tone's lower partial swells first; the spin loop (848 Hz) fades in under it as the ball forms
+      const o = this.ctx.createOscillator(); o.frequency.value = 626;
+      const g = this.ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.07, t + duration * 0.4); g.gain.setValueAtTime(0.07, t + duration * 0.55);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + duration * 1.05);
+      o.connect(g).connect(this.pan); o.start(t); o.stop(t + duration * 1.1);
+      return;
+    }
     this._sweep(t, duration, 424, 848, 0.05, 'sine', duration * 0.7);
     this._sweep(t, duration, 212, 424, 0.03, 'triangle', duration * 0.7);
     this._noise(t, duration, 'bandpass', 900, 5200, 2.5, 0.045, duration * 0.8);
@@ -124,6 +169,7 @@ export class Sound {
     this.flutterLfo.frequency.setTargetAtTime(Math.min(40, rate * 1.2 + 1), t, 0.08);
     this.whirrBP.frequency.setTargetAtTime(2400 * Math.pow(k, 0.45), t, 0.08);
     if (this.loopSrc) this.loopSrc.playbackRate.setTargetAtTime(pitch, t, 0.05);
+    if (this.sbrLoop) this.sbrLoop.playbackRate.setTargetAtTime(Math.pow(k, 0.08) * (1 + approach * 0.25), t, 0.05);
     this.spinGain.gain.setTargetAtTime(level * (0.55 + approach * 0.9), t, level > 0 ? 0.06 : 0.12);
     this.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, pan)), t, 0.05);
   }
@@ -133,14 +179,29 @@ export class Sound {
     if (!this.ctx || !this._cool('throw', 0.15)) return;
     if (this._sample('throw')) return;
     const t = this.ctx.currentTime;
+    if (this.bank === 'sbr' && this.sbr.throw) {
+      this._noise(t, 0.1, 'highpass', 3000, 6000, 0.7, 0.25, 0.003);           // snap of the release
+      this._stopRoar(0.03);
+      this.roar = this._play(this.sbr.throw, 1.0);                             // the comet roar, cut off at impact
+      return;
+    }
     this._noise(t, 0.12, 'highpass', 3000, 6000, 0.7, 0.3, 0.003);            // snap of the release
     this._noise(t, duration, 'bandpass', 700, 3200, 1.4, 0.3, duration * 0.75);
     for (const [f0, f1] of [[300, 1000], [380, 1300], [220, 760]]) this._sweep(t, duration * 0.6, f0, f1, 0.05, 'sawtooth', duration * 0.4);
   }
 
+  _stopRoar(tau = 0.05) {
+    if (!this.roar) return;
+    const t = this.ctx.currentTime;
+    this.roar.g.gain.setTargetAtTime(0, t, tau); this.roar.s.stop(t + tau * 8);
+    this.roar = null;
+  }
+
   // Ball reaches the lens.
   impact() {
-    if (!this.ctx || !this._cool('impact', 0.5)) return;
+    if (!this.ctx) return;
+    this._stopRoar(0.04);
+    if (!this._cool('impact', 0.5)) return;
     if (this._sample('impact')) return;
     const t = this.ctx.currentTime;
     this._sweep(t, 0.6, 130, 32, 0.9, 'sine', 0.004);

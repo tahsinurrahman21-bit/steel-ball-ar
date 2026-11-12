@@ -39,7 +39,8 @@ missing, download it from
 | `D` | Debug | Landmarks, skeleton, palm axes, gesture and timing readouts |
 | `S` | Style | Cycles hybrid → anime → metal |
 | `2` | Two hands | A ball on each hand, each summoned and thrown on its own. Snap both hands forward together for a double throw |
-| `L` | Look | Switches between the current ball (new) and the first version (classic) |
+| `L` | Look | Cycles the ball: new → classic → SBR |
+| `V` | Sound | Switches the sound bank: synth ↔ SBR |
 | `G` | Hat | Gyro's hat on your head (loads a face-tracking model the first time). A **Hat fit** panel appears with size, height, forward/back and tilt sliders; the fit is saved |
 | `C` | Calibrate | Real-object calibration panel |
 | `M` | Mirror | Selfie mirroring on/off |
@@ -53,7 +54,11 @@ missing, download it from
 blur, no drawn streaks. *Anime* is cel shaded with pale lime, zigzag spin streaks and a
 wobbling outline. *Hybrid* (default) sits between them.
 
-**Looks.** Both versions of the ball are kept. *New* is solid and mirror-like, with short
+**Looks.** Three versions of the ball are kept. *SBR* is drawn the way the anime's Spin
+montage (`videos/special`) draws it: flat pale lime, brush-stroke spin streaks with
+serrated edges and dark tick marks, five white rings with lavender edges, and on a throw a
+pinwheel swirl, a flame-edged gold aura, torn flame tail and star sparks. It is always fully
+drawn, whatever the style setting. *New* is solid and mirror-like, with short
 comb-ended spin streaks and an ink outline in the anime style. *Classic* is the first
 version: glassier reflections, zigzag-edged streak bands, thinner channels. Each look works
 with all three styles. Your style and look are remembered between visits.
@@ -71,7 +76,20 @@ The detector needs a ball whose colour differs from your skin and from what is b
 
 ## Your own sounds
 
-Sound is synthesised by default. To use recordings, see `assets/audio/README.md`.
+Two sound banks, switched with `V`:
+
+- **synth** (default): built with the Web Audio API from measurements of the reference clips.
+- **SBR**: lifted from the Spin montage. The real pulsed Spin tone, isolated from the mix;
+  the gold-comet roar with the music removed, cut off at impact; the activation shimmer;
+  and the tone's two-stage onset (its 626 Hz partial first, then 848 Hz).
+
+The SBR sounds are cut from your video, so they are not committed. Recreate them with:
+
+```bash
+python -I tools/extract_sbr_audio.py videos/special/InShot_20261112_133246086.mp4 assets/audio/sbr
+```
+
+To use your own recordings instead, see `assets/audio/README.md`.
 
 ## If something is off
 

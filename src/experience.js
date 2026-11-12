@@ -12,7 +12,7 @@ export const TUNE = {
   summonTime: 1.5,
   dwell: 0.22,          // seconds the open palm must hold before the ball starts to appear
   style: 'hybrid',      // 'metal' | 'hybrid' | 'anime'
-  look: 'new',          // 'new' | 'classic' (the first version of the ball shader)
+  look: 'new',          // 'new' | 'classic' (first version) | 'sbr' (drawn like the anime's Spin montage)
 };
 export const STYLES = { metal: { toon: 0, streak: 0, wobble: 0 }, hybrid: { toon: 0.45, streak: 0.8, wobble: 0.02 }, anime: { toon: 1, streak: 1, wobble: 0.045 } };
 
@@ -78,7 +78,7 @@ export class Experience {
     this.now = time;
     const present = !!hand?.present;
     this.lostFor = present ? 0 : this.lostFor + dt;
-    const S = STYLES[TUNE.style], fx = this.fx, T = {};
+    const S = TUNE.look === 'sbr' ? STYLES.anime : STYLES[TUNE.style], fx = this.fx, T = {};   // the sbr look is always fully drawn
     for (const k in fx) T[k] = 0;
 
     if (present) {
@@ -98,7 +98,7 @@ export class Experience {
     this.cooldown = Math.max(0, this.cooldown - dt);
     this.t += dt;
     const idle = TUNE.idleRev * Math.PI * 2;
-    let follow = false, tail = 0, approach = 0, level = 0;
+    let follow = false, tail = 0, approach = 0, level = 0, twist = 0;
 
     switch (this.state) {
       case 'idle': {
@@ -152,6 +152,8 @@ export class Experience {
         this.omega += (TUNE.throwRev * Math.PI * 2 - this.omega) * (1 - Math.exp(-dt / 0.1));
         this.axis.lerp(this.spinDir, 1 - Math.exp(-dt / 0.12)).normalize();
         this.appear = 1; this.scale = 1; level = 1; approach = u; tail = sm(0.02, 0.2, u);
+        twist = sm(0, 0.35, u);                                                          // streaks swirl round the near pole
+        if (TUNE.look === 'sbr' && Math.random() < dt * 45) this.ball.spawn(1, 1, this.pos, this.radius * 0.9);   // crackling sparks
         T.streak = S.streak; T.rings = 1; T.glow = sm(0, 0.3, u) * 0.85; T.gold = 1; T.halo = 0.5 + 0.5 * u;
         T.bloom = 0.5; T.grade = 0.65; T.blur = 0.7 * u * u; T.lines = sm(0.08, 0.45, u); T.ca = 0.007 * u; T.vig = 0.5 * u;
         this.ringScale = 1 + 0.5 * u;
@@ -199,7 +201,7 @@ export class Experience {
       appear: this.appear, streak: fx.streak * sm(TUNE.idleRev * 2, TUNE.idleRev * 5.5, this.omega) * (visible ? 1 : 0), toon: S.toon, glow: fx.glow,
       rings: visible ? fx.rings * this.appear : 0, ringScale: this.ringScale, halo: fx.halo, gold: fx.gold,
       palm: follow && present ? this.palm : null, shadow: fx.shadow, bounce: fx.bounce,
-      tail, tailFrom: this.tailFrom, flare: imp.flare, wobble: S.wobble * sm(0, idle, this.omega),
+      tail, tailFrom: this.tailFrom, flare: imp.flare, wobble: S.wobble * sm(0, idle, this.omega), twist,
     });
     const L = this.stage.light, bu = this.ball.u;
     bu.uLightDir.value.copy(L.dir); bu.uLightCol.value.copy(L.col); bu.uExposure.value = L.exposure;

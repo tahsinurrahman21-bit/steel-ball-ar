@@ -155,6 +155,7 @@ async function start() {
 }
 
 const STYLE_ORDER = ['hybrid', 'anime', 'metal'];
+const LOOKS = ['new', 'classic', 'sbr'], LOOK_LABEL = { new: 'new', classic: 'classic', sbr: 'SBR' };
 // Gyro's hat: switching it on loads the face model the first time
 async function setHat(on) {
   hat.on = on; $('bHat').setAttribute('aria-pressed', on); $('hatPanel').style.display = on ? 'block' : 'none';
@@ -173,18 +174,21 @@ const PREFS = 'steelball.prefs.v1';
 try {
   const p = JSON.parse(localStorage.getItem(PREFS) || '{}');
   if (STYLE_ORDER.includes(p.style)) TUNE.style = p.style;
-  if (p.look === 'classic' || p.look === 'new') TUNE.look = p.look;
+  if (LOOKS.includes(p.look)) TUNE.look = p.look;
+  if (p.sound === 'sbr') sound.bank = 'sbr';
   hat.on = !!p.hat; for (const k of ['size', 'height', 'depth', 'tilt']) if (Number.isFinite(p.fit?.[k])) hat[k] = p.fit[k];
   if (p.hands === 2) slots.count = 2;
 } catch { /* ignore */ }
 if (q.has('hat')) hat.on = q.get('hat') !== '0';
 if (q.has('hands')) slots.count = q.get('hands') === '2' ? 2 : 1;
 if (STYLE_ORDER.includes(q.get('style'))) TUNE.style = q.get('style');
-if (q.get('look') === 'classic' || q.get('look') === 'new') TUNE.look = q.get('look');
+if (LOOKS.includes(q.get('look'))) TUNE.look = q.get('look');
+if (q.has('sound')) sound.bank = q.get('sound') === 'sbr' ? 'sbr' : 'synth';
 const showPrefs = (save = true) => {
-  $('bStyle').firstChild.textContent = `Style: ${TUNE.style}`; $('bLook').firstChild.textContent = `Look: ${TUNE.look}`;
+  $('bStyle').firstChild.textContent = `Style: ${TUNE.style}`; $('bLook').firstChild.textContent = `Look: ${LOOK_LABEL[TUNE.look]}`;
+  $('bSound').firstChild.textContent = `Sound: ${sound.bank === 'sbr' ? 'SBR' : 'synth'}`;
   $('bHands').setAttribute('aria-pressed', slots.count > 1);
-  if (save) { try { localStorage.setItem(PREFS, JSON.stringify({ style: TUNE.style, look: TUNE.look, hat: hat.on, hands: slots.count, fit: { size: hat.size, height: hat.height, depth: hat.depth, tilt: hat.tilt } })); } catch { /* private mode */ } }
+  if (save) { try { localStorage.setItem(PREFS, JSON.stringify({ style: TUNE.style, look: TUNE.look, sound: sound.bank, hat: hat.on, hands: slots.count, fit: { size: hat.size, height: hat.height, depth: hat.depth, tilt: hat.tilt } })); } catch { /* private mode */ } }
 };
 showPrefs(false);
 // hat fit sliders
@@ -198,7 +202,8 @@ const actions = {
   d: () => { debug.enabled = !debug.enabled; $('bDebug').setAttribute('aria-pressed', debug.enabled); },
   s: () => { TUNE.style = STYLE_ORDER[(STYLE_ORDER.indexOf(TUNE.style) + 1) % 3]; showPrefs(); },
   g: () => { setHat(!hat.on); showPrefs(); },
-  l: () => { TUNE.look = TUNE.look === 'new' ? 'classic' : 'new'; for (const b of balls) b.setLook(TUNE.look); showPrefs(); },
+  l: () => { TUNE.look = LOOKS[(LOOKS.indexOf(TUNE.look) + 1) % LOOKS.length]; for (const b of balls) b.setLook(TUNE.look); showPrefs(); },
+  v: () => { sound.setBank(sound.bank === 'sbr' ? 'synth' : 'sbr'); showPrefs(); },
   2: () => { setHands(slots.count > 1 ? 1 : 2); showPrefs(); },
   c: () => { if (!calib) return; calib.toggle(); $('bCalib').setAttribute('aria-pressed', calib.active); },
   m: () => { slots.mirror = !slots.mirror; slots.reset(); $('bMirror').setAttribute('aria-pressed', slots.mirror); },
@@ -212,7 +217,7 @@ addEventListener('keydown', (e) => {
   if (e.target?.matches?.('input, select') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   actions[e.key.toLowerCase()]?.();
 });
-for (const [id, key] of [['bDebug', 'd'], ['bStyle', 's'], ['bLook', 'l'], ['bHands', '2'], ['bHat', 'g'], ['bCalib', 'c'], ['bMirror', 'm'], ['bOcc', 'o'], ['bMute', 'n'], ['bFill', 'f']]) $(id).onclick = actions[key];
+for (const [id, key] of [['bDebug', 'd'], ['bStyle', 's'], ['bLook', 'l'], ['bSound', 'v'], ['bHands', '2'], ['bHat', 'g'], ['bCalib', 'c'], ['bMirror', 'm'], ['bOcc', 'o'], ['bMute', 'n'], ['bFill', 'f']]) $(id).onclick = actions[key];
 $('bDebug').setAttribute('aria-pressed', debug.enabled);
 $('go').onclick = start;
 if (q.has('sim') || q.has('video')) start();

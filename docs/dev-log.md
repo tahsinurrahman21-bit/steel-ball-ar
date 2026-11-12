@@ -2,6 +2,45 @@
 
 Newest entry first. Each entry: what changed, what was checked and how, what is still wrong.
 
+## 2026-11-12 — SBR look and sound bank (from `videos/special`)
+
+New reference: a 77 s, 60 fps montage of the anime's Spin scenes. Both new versions sit
+alongside the old ones: `L` now cycles new → classic → **SBR**, `V` switches the sound bank
+synth ↔ **SBR**. Style, look and sound are all remembered.
+
+**Look** (`src/ball-sbr.js`, plus SBR variants of the rings, aura, tail and sparks in `ball.js`):
+
+| In the reference | In the SBR look |
+|---|---|
+| Flat pale lime, no gloss, hard white highlight patches when still | Three hard tones, ink outline, hard highlight patches that vanish once it spins |
+| Spinning: wide cream bands with saw-toothed edges, ragged dark-green strokes, short dark vertical ticks, redrawn every frame | Rows of brush strokes round the spin axis with irregular serrated edges, bold dark strokes, ticks; redrawn 12 times a second |
+| 4–5 thick white crescent rings with a lavender edge, one at the base | Five rings, thicker, lavender outer edge, tighter to the ball |
+| Throw: pinwheel swirl, flame-edged gold aura, saturated orange comet tail, star sparks | Swirl (streaks twist round the near pole), flickering flame aura, torn-edged tail, four-point star sparks |
+
+Iterations: the first spin texture looked like a barcode (rows too thin, blocky strokes);
+the second had too regular a zigzag; the third (irregular teeth, bolder strokes, wider cream)
+is the one kept. Compared side by side with `InShot @ 24.84, 25.48` in
+`captures/lab-sbr-compare2.jpg`.
+
+**Sound** (`assets/audio/sbr/`, made by `tools/extract_sbr_audio.py`):
+
+- The Spin tone was found in eight stretches of the montage, always 847–848 Hz pulsing at
+  about 3.5 Hz. The cleanest (67.55–69.05 s, 41 dB above the floor) was isolated by keeping
+  only its partials (493, 626, 848, 900, 990, 2502 Hz): everything else in the mix is 31 dB
+  down. Made loopable with a 0.3 s crossfade.
+- Throw: the gold-comet roar (64.40–66.02 s). It carried short stepped tones that look like
+  music; a harmonic/noise split removed them (10 dB of tonal energy). The roar is cut off
+  when the ball reaches the lens.
+- Activation: the shimmer at 42.33–42.98 s, band-passed above the voice under it.
+- Onset: in the reference the 626 Hz partial sounds first and the 848 Hz tone takes over;
+  the SBR activation swells a 626 Hz tone while the loop fades in.
+- Materialise, impact and dissolve stay synthesised: the montage has no clean version.
+
+**Not verified:** I cannot hear, so none of the SBR sounds has been listened to. The loop's
+pulse, partials and seam, the roar's lack of tonal lines, and the bank switching were
+checked by measurement. The extracted audio is not committed (it is cut from the anime,
+like the videos it comes from).
+
 ## 2026-11-12 — double throw
 
 Throwing with both hands within 0.3 s of each other (`DOUBLE_WINDOW` in

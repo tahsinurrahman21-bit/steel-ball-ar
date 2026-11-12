@@ -5,3 +5,4 @@ assets/models/original/*
 !assets/models/original/.gitkeep
 *.log
 captures/
+assets/audio/sbr/*.wav
