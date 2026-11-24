@@ -1,8 +1,70 @@
+# ---------------------------------------------------------------
+# Steel Ball AR: files that must never be published
+# ---------------------------------------------------------------
+
+# Dependencies (restored by `npm install`)
 node_modules/
+
+# Release build output (made by `npm run build:release`)
+dist/
+release/
+*.zip
+*.exe
+*.blob
+
+# Reference videos downloaded from YouTube. Copyrighted anime footage:
+# do NOT publish. Keep them local only.
 videos/
+*.webm
+*.mkv
+
+# Personal test footage (contains the developer's hands/face)
 test-media/
+*.mp4
+*.mov
+
+# Webcam frames saved by `serve.mjs --captures` (contains the developer's face)
+captures/
+
+# Sounds cut from the anime. Copyrighted: do NOT publish.
+assets/audio/sbr/*
+!assets/audio/sbr/.gitkeep
+
+# Your own sound files (see assets/audio/README.md). Publish only if you own them.
+assets/audio/*.wav
+assets/audio/*.mp3
+assets/audio/*.ogg
+
+# Third-party 3D models (see docs/model-comparison.md); their licences vary
 assets/models/original/*
 !assets/models/original/.gitkeep
+
+# Python (tools/extract_sbr_audio.py)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs and debug output
 *.log
-captures/
-assets/audio/sbr/*.wav
+npm-debug.log*
+
+# Secrets, in case any are ever added
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Workflow files waiting to be renamed into .github/ (see README)
+_github/
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/

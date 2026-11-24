@@ -1,0 +1,6 @@
+{
+  "main": "tools/launcher.cjs",
+  "output": "dist/launcher.blob",
+  "disableExperimentalSEAWarning": true,
+  "useCodeCache": false
+}
