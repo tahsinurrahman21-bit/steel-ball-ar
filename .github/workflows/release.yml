@@ -1,0 +1,75 @@
+# Builds the standalone Windows download and attaches it to a GitHub Release.
+#
+# To publish a release:  push a tag that starts with "v", e.g.
+#   git tag v0.1.0 && git push origin v0.1.0
+# (or in GitHub Desktop: History -> right-click the commit -> Create Tag -> Push).
+# You can also run it by hand from the Actions tab ("Run workflow") to get a test build
+# as a downloadable artifact without making a release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Assemble release folder
+        shell: bash
+        run: |
+          # Fixed name so the README can link straight to releases/latest/download/SteelBallAR-win-x64.zip
+          NAME="SteelBallAR-win-x64"
+          echo "NAME=$NAME" >> "$GITHUB_ENV"
+          node tools/build-release.mjs "$NAME"
+
+      - name: Build SteelBallAR.exe (Node single executable)
+        shell: bash
+        run: |
+          node --experimental-sea-config tools/sea-config.json
+          cp "$(node -p process.execPath)" dist/SteelBallAR.exe
+          signtool remove -s dist/SteelBallAR.exe 2>/dev/null || true
+          npx --yes postject@1.0.0-alpha.6 dist/SteelBallAR.exe NODE_SEA_BLOB dist/launcher.blob \
+            --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
+          mv dist/SteelBallAR.exe "dist/$NAME/SteelBallAR.exe"
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          "dist/$NAME/SteelBallAR.exe" 5199 --no-open &
+          sleep 3
+          curl -fsS http://127.0.0.1:5199/ | grep -q "Steel Ball AR"
+          curl -fsS -o /dev/null http://127.0.0.1:5199/node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.wasm
+          curl -fsS -o /dev/null http://127.0.0.1:5199/assets/mediapipe/hand_landmarker.task
+          taskkill //IM SteelBallAR.exe //F || true
+
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path "dist/$env:NAME" -DestinationPath "dist/$env:NAME.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: dist/${{ env.NAME }}.zip
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ env.NAME }}.zip
+          name: Steel Ball AR ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
